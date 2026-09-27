@@ -8,7 +8,8 @@
     "build:js": "tsup",
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
-    "dev": "tsx watch src/core/index.ts"
+    "dev": "tsx watch src/core/index.ts",
+    "test": "vitest run --passWithNoTests"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +35,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "4.1.10"
   }
 }
