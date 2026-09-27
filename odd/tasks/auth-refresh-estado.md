@@ -5,7 +5,7 @@
 > Alcance autorizado (usuario, 2026-09-27): paquetes con lógica de negocio + preparar api-gateway. Solo lectura/entendimiento en gateway por ahora.
 > Modo: inline sin subagentes (decisión del usuario 2026-09-27 — delegación no disponible por bloqueo free tier; desvío registrado, no silencioso).
 > TDD: deshabilitado — el árbol vigente no tiene runner (sin vitest, sin script `test`; verificado por glob + `package.json`). Verificación por tarea: `pnpm --filter <pkg> build` (`tsup` + `tsc`) y `codegraph explore` del área tocada.
-> Delivery: git inicializado el 2026-09-27 (rama `main`, identidad local `JuanCardona`). La T1 se implementó pre-git y quedó sin commit — ver nota en Progreso. De acá en más rige 1 commit por unidad de trabajo. Estrategia: `ask-on-risk` (defecto).
+> Delivery: git inicializado el 2026-09-27 (rama `main`, identidad local `JuanCardona`). Commit inicial `e37c737` (54 archivos, incluye T1). De acá en más rige 1 commit por unidad de trabajo. Estrategia: `ask-on-risk` (defecto).
 > Decisiones: refresh **con estado** (rotación, detección de reuso con revocación en cascada); errores tipados en inglés (T2).
 
 ## Checklist
