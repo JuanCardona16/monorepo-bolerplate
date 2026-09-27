@@ -1,0 +1,31 @@
+{
+  "name": "api-gateway",
+  "version": "1.0.0",
+  "description": "Api gateway for the application",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build:js": "tsup",
+    "build:types": "tsc",
+    "build": "pnpm build:js && pnpm build:types",
+    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "tsup": "^8.5.1"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}

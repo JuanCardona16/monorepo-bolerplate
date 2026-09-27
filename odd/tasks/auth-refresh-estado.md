@@ -15,7 +15,7 @@
 - [x] **T3** Comportamiento en `AuthUser` (roles), VO de rol, `findByUuid`/`update` en repositorio. Ruta: inline. Build exit 0. Commit `0ce4f74` (incluyó doc pendiente de T2).
 - [x] **T4** Puerto de UUID + DTO en Register + `implements` explícito en Bcrypt. Ruta: inline. Build `core` y `security` exit 0. Commit `9396657`.
 - [x] **T5** Adapter Prisma de `AuthRepository` + `RefreshTokenRepository` + mappers en `infrastructure`. Ruta: inline. Build `core`, `security`, `infrastructure` exit 0. Commit `f9e5c15`. Nota: sin DB disponible → migración SQL pendiente (fase gateway con `DATABASE_URL`).
-- [ ] **T6** Decidir submódulos vacíos de infra (`mongodb/cache/external/messaging/shared/config`), bug `exports["./messaging"]`, superficies `index.ts`.
+- [x] **T6** Decidir submódulos vacíos de infra (`mongodb/cache/external/messaging/shared/config`), bug `exports["./messaging"]`, superficies `index.ts`. Ruta: inline. Build `core` + `infra` exit 0. Commit `714c8e5`.
 
 ## Progreso
 
@@ -25,3 +25,4 @@
 - 2026-09-27: **T3 cerrada** (`0ce4f74`, 6 archivos: 2 nuevos + 3 editados + doc). VO `Role` (trim/lowercase) + `InvalidRoleError`; `assignRole/revokeRole/hasRole`; `findByUuid`/`update`. Build exit 0 tras corregir import (`../errors/`). Siguiente: T4.
 - 2026-09-27: **T4 cerrada** (`9396657`, 9 archivos). Puerto `IdGenerator` + DTOs Register in/out (`RegisterOutputDTO.uuid`); Login/Refresh/Register usan el puerto (cero `crypto.randomUUID` en casos de uso); Bcrypt declara `implements`. Build `core` y `security` exit 0 (`security` compiló por primera vez en la sesión).
 - 2026-09-27: **T5 cerrada** (`f9e5c15`, 13 archivos). Schema + tabla `refresh_tokens`, cliente regenerado; `PrismaAuthRepository` (P2002→`UserAlreadyExistsError`) + `PrismaRefreshTokenRepository` (upsert + `revokeAllForUser`) con mappers; `Sha256RefreshTokenHasher` (timing-safe) + `CryptoIdGenerator` en `security`; dep `@repo/core` en infra; `generated/` a `.gitignore`. Build de los 3 paquetes exit 0. Pendiente: migración SQL (sin DB) y DI (fase gateway). Siguiente: T6.
+- 2026-09-27: **T6 cerrada** (`714c8e5`, 4 archivos). `index` raíz en `core` e `infra`; eliminados los 4 exports huecos (incluido el bug `messaging→external`); eliminados dirs vacíos `mongodb/` y `messaging/`; `cache/external/shared/config` quedan como puntos de extensión. Build `core` + `infra` exit 0. **Feature completa: 6/6 tareas.** Pendiente fase gateway: migración SQL con `DATABASE_URL`, DI/composition root, endpoints y middleware.
