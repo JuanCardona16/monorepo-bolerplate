@@ -1,3 +1,5 @@
+import { Role } from "../value-objects/Role.js";
+
 export interface AuthUserProps {
   uuid: string;
   email: string;
@@ -32,6 +34,18 @@ export class AuthUser {
 
   get roles(): Set<string> {
     return new Set(this._roles);
+  }
+
+  hasRole(role: string): boolean {
+    return this._roles.has(new Role(role).value);
+  }
+
+  assignRole(role: string): void {
+    this._roles.add(new Role(role).value);
+  }
+
+  revokeRole(role: string): void {
+    this._roles.delete(new Role(role).value);
   }
 
 }
