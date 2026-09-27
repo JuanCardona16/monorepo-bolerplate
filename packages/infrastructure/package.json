@@ -13,22 +13,6 @@
     "./persistence/postgresSql": {
       "types": "./dist/persistence/postgresSql/index.d.ts",
       "default": "./dist/persistence/postgresSql/index.js"
-    },
-    "./persistence/mongodb": {
-      "types": "./dist/persistence/mongodb/index.d.ts",
-      "default": "./dist/persistence/mongodb/index.js"
-    },
-    "./cache": {
-      "types": "./dist/cache/index.d.ts",
-      "default": "./dist/cache/index.js"
-    },
-    "./external": {
-      "types": "./dist/external/index.d.ts",
-      "default": "./dist/external/index.js"
-    },
-    "./messaging": {
-      "types": "./dist/external/index.d.ts",
-      "default": "./dist/external/index.js"
     }
   },
   "scripts": {
