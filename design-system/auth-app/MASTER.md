@@ -14,22 +14,23 @@
 
 ## Global Rules
 
-### Color Palette
+### Color Palette (light theme — from WeStud reference image, user directive 2026-09-27)
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#1E293B` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#334155` | `--color-secondary` |
-| Accent/CTA | `#22C55E` | `--color-accent` |
-| Background | `#0F172A` | `--color-background` |
-| Foreground | `#F8FAFC` | `--color-foreground` |
-| Muted | `#272F42` | `--color-muted` |
-| Border | `#475569` | `--color-border` |
-| Destructive | `#EF4444` | `--color-destructive` |
-| Ring | `#1E293B` | `--color-ring` |
+| Role | Hex | CSS Variable / Tailwind |
+|------|-----|--------------------------|
+| Ink (text, primary button) | `#191C22` | `--color-ink` |
+| Paper (cards) | `#FFFFFF` | `--color-paper` |
+| Sand (art panel, page alt) | `#E9E6E0` | `--color-sand` |
+| Grape (illustration) | `#6C2BFF` | `--color-grape` |
+| Tang (illustration) | `#FF6A2B` | `--color-tang` |
+| Sun (illustration) | `#F6C90E` | `--color-sun` |
+| Smoke (secondary button) | `#F1F3F4` | `--color-smoke` |
+| Line (borders, placeholders) | `#E2E0DA` | `--color-line` |
+| Muted (secondary text) | `#8A8F98` | `--color-muted` |
+| Coal (page backdrop) | `#14161A` | `--color-coal` |
+| Destructive | `#EF4444` | (tailwind `red-600`) |
 
-**Color Notes:** Code dark + run green
+**Color Notes:** light playful auth (WeStud-like); dark page backdrop framing a light split card; previously dark-slate palette replaced per user direction — always use this palette for light themes.
 
 ### Typography
 

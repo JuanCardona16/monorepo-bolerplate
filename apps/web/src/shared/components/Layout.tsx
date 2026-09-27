@@ -3,21 +3,6 @@ import { ApiPaths, AppRoutes } from "../../constants/index";
 import { api } from "../../infrastructure/http/apiClient";
 import { useAuthStore } from "../../features/auth/stores/auth";
 
-function BrandMark() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-      <rect x="1" y="1" width="20" height="20" rx="5" fill="#22c55e" />
-      <path
-        d="M7 11.5l3 3 5-6"
-        stroke="#0f172a"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const clear = useAuthStore((s) => s.clear);
@@ -34,28 +19,33 @@ export function Layout() {
   };
 
   return (
-    <div>
-      <nav className="nav" aria-label="Main">
-        <Link to={AppRoutes.HOME} className="brand">
-          <BrandMark />
+    <div className="min-h-screen bg-coal">
+      <nav aria-label="Main" className="flex items-center gap-4 bg-coal px-6 py-3">
+        <Link to={AppRoutes.HOME} className="font-bold text-white no-underline">
           Auth App
         </Link>
-        <div className="nav-links">
+        <div className="ml-auto flex items-center gap-4">
           {accessToken ? (
-            <button type="button" className="btn btn-ghost" onClick={() => void logout()}>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="cursor-pointer rounded-full bg-smoke px-4 py-2 text-sm font-semibold text-ink transition-opacity duration-150 hover:opacity-80"
+            >
               Logout
             </button>
           ) : (
             <>
-              <Link to={AppRoutes.LOGIN}>Login</Link>
-              <Link to={AppRoutes.REGISTER}>Register</Link>
+              <Link to={AppRoutes.LOGIN} className="text-sm text-white">
+                Login
+              </Link>
+              <Link to={AppRoutes.REGISTER} className="text-sm text-white">
+                Register
+              </Link>
             </>
           )}
         </div>
       </nav>
-      <main>
-        <Outlet />
-      </main>
+      <Outlet />
     </div>
   );
 }

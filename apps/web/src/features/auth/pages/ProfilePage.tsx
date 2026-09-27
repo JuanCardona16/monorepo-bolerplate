@@ -5,8 +5,8 @@ export function ProfilePage() {
 
   if (query.isPending) {
     return (
-      <div className="page">
-        <p className="status" role="status">
+      <div className="flex min-h-[calc(100vh-57px)] items-center justify-center p-4">
+        <p className="text-muted" role="status">
           Loading profile…
         </p>
       </div>
@@ -14,25 +14,30 @@ export function ProfilePage() {
   }
   if (query.isError) {
     return (
-      <div className="page">
-        <p className="form-error" role="alert">
+      <div className="flex min-h-[calc(100vh-57px)] items-center justify-center p-4">
+        <p className="text-red-600" role="alert">
           Could not load profile.
         </p>
       </div>
     );
   }
   return (
-    <div className="page">
-      <section className="profile-card" aria-labelledby="profile-title">
-        <h1 id="profile-title">Your profile</h1>
+    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center bg-sand p-4 sm:p-8">
+      <section
+        aria-labelledby="profile-title"
+        className="w-full max-w-md rounded-3xl bg-paper p-8"
+      >
+        <h1 id="profile-title" className="mb-4 text-2xl font-bold text-ink">
+          Your profile
+        </h1>
         <dl>
-          <div className="profile-row">
-            <dt>Email</dt>
-            <dd>{query.data.email}</dd>
+          <div className="flex justify-between gap-4 border-t border-line py-3">
+            <dt className="text-muted">Email</dt>
+            <dd className="font-semibold text-ink">{query.data.email}</dd>
           </div>
-          <div className="profile-row">
-            <dt>Roles</dt>
-            <dd>{query.data.roles.join(", ")}</dd>
+          <div className="flex justify-between gap-4 border-t border-line py-3">
+            <dt className="text-muted">Roles</dt>
+            <dd className="font-semibold text-ink">{query.data.roles.join(", ")}</dd>
           </div>
         </dl>
       </section>
