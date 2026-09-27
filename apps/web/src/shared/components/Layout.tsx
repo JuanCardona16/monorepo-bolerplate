@@ -1,6 +1,7 @@
 import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
-import { api } from "../app/api.js";
-import { useAuthStore } from "../stores/auth.js";
+import { ApiPaths, AppRoutes } from "../../constants/index";
+import { api } from "../../infrastructure/http/apiClient";
+import { useAuthStore } from "../../features/auth/stores/auth";
 
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -9,26 +10,26 @@ export function Layout() {
 
   const logout = async () => {
     try {
-      await api.post("/api/v1/auth/logout");
+      await api.post(ApiPaths.LOGOUT);
     } catch {
       // Session already invalid — clear locally anyway.
     }
     clear();
-    navigate("/login");
+    navigate(AppRoutes.LOGIN);
   };
 
   return (
     <div>
       <nav>
-        <Link to="/">Home</Link>
+        <Link to={AppRoutes.HOME}>Home</Link>
         {accessToken ? (
           <button type="button" onClick={() => void logout()}>
             Logout
           </button>
         ) : (
           <>
-            <Link to="/login">Login</Link>
-            <Link to="/register">Register</Link>
+            <Link to={AppRoutes.LOGIN}>Login</Link>
+            <Link to={AppRoutes.REGISTER}>Register</Link>
           </>
         )}
       </nav>
@@ -42,7 +43,7 @@ export function Layout() {
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const accessToken = useAuthStore((s) => s.accessToken);
   if (!accessToken) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={AppRoutes.LOGIN} replace />;
   }
   return <>{children}</>;
 }

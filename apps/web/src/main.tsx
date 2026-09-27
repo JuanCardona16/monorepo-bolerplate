@@ -1,27 +1,11 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
-import { queryClient } from "./app/queryClient.js";
-import { router } from "./app/router.js";
-import { useAuthStore } from "./stores/auth.js";
+import { Bootstrap } from "./core/composition/Bootstrap";
+import { router } from "./core/composition/router";
+import { queryClient } from "./core/providers/queryClient";
 import "./index.css";
-
-function Bootstrap({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    void useAuthStore
-      .getState()
-      .refresh()
-      .finally(() => setReady(true));
-  }, []);
-
-  if (!ready) {
-    return <p>Loading…</p>;
-  }
-  return <>{children}</>;
-}
 
 const root = document.getElementById("root");
 if (!root) {

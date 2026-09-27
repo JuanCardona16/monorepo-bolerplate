@@ -1,29 +1,25 @@
-import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { ApiError, api } from "../../app/api.js";
-
-interface RegisterForm {
-  email: string;
-  password: string;
-}
+import { AppRoutes } from "../../../constants/index";
+import { ApiError } from "../../../core/errors/ApiError";
+import { useRegister } from "../hooks";
+import type { RegisterInput } from "../types";
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register, handleSubmit, formState } = useForm<RegisterForm>();
+  const { register, handleSubmit, formState } = useForm<RegisterInput>();
+  const mutation = useRegister();
 
-  const mutation = useMutation({
-    mutationFn: (data: RegisterForm) =>
-      api.post<{ uuid: string }>("/api/v1/auth/register", data),
-    onSuccess: () => {
-      navigate("/login");
-    },
-  });
+  const onSubmit = (data: RegisterInput) => {
+    mutation.mutate(data, {
+      onSuccess: () => navigate(AppRoutes.LOGIN),
+    });
+  };
 
   return (
     <div>
       <h1>Register</h1>
-      <form onSubmit={(e) => void handleSubmit((data) => mutation.mutate(data))(e)}>
+      <form onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
         <input type="email" placeholder="Email" {...register("email", { required: true })} />
         <input
           type="password"

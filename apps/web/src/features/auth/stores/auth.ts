@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { api } from "../app/api.js";
+import { ApiPaths } from "../../../constants/index";
+import { api } from "../../../infrastructure/http/apiClient";
+import type { LoginInput, SessionPayload } from "../types";
 
 interface AuthState {
   accessToken: string | null;
@@ -14,7 +16,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   clear: () => set({ accessToken: null }),
   refresh: async () => {
     try {
-      const data = await api.post<{ accessToken: string }>("/api/v1/auth/refresh");
+      const data = await api.post<SessionPayload>(ApiPaths.REFRESH);
       set({ accessToken: data.accessToken });
       return true;
     } catch {
@@ -23,3 +25,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
     }
   },
 }));
+
+export async function loginRequest(input: LoginInput): Promise<SessionPayload> {
+  return api.post<SessionPayload>(ApiPaths.LOGIN, input);
+}
