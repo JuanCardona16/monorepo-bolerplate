@@ -1,0 +1,10 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "extends": "../typescript-config/base.json",
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+  },
+  "exclude": ["node_modules", "dist", "tsup.config.ts"]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@repo/core",
+  "version": "1.0.0",
+  "description": "Core Domain package for the project",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./authentication": {
+      "types": "./dist/authentication/index.d.ts",
+      "default": "./dist/authentication/index.js"
+    }
+  },
+  "scripts": {
+    "build:js": "tsup",
+    "build:types": "tsc",
+    "build": "pnpm build:js && pnpm build:types",
+    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@repo/typescript-config": "workspace:*"
+  }
+}

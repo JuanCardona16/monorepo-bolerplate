@@ -1,0 +1,27 @@
+{
+  "name": "@repo/security",
+  "version": "1.0.0",
+  "description": "Security package for the project",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build:js": "tsup",
+    "build:types": "tsc",
+    "build": "pnpm build:js && pnpm build:types",
+    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.5.1"
+  },
+  "dependencies": {
+    "@repo/core": "workspace:*",
+    "bcrypt": "^6.0.0",
+    "jsonwebtoken": "^9.0.3"
+  }
+}

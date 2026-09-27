@@ -1,0 +1,57 @@
+{
+  "name": "@repo/infrastructure",
+  "version": "1.0.0",
+  "description": "Infrastructure layer for the authentication service",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./persistence/postgresSql": {
+      "types": "./dist/persistence/postgresSql/index.d.ts",
+      "default": "./dist/persistence/postgresSql/index.js"
+    },
+    "./persistence/mongodb": {
+      "types": "./dist/persistence/mongodb/index.d.ts",
+      "default": "./dist/persistence/mongodb/index.js"
+    },
+    "./cache": {
+      "types": "./dist/cache/index.d.ts",
+      "default": "./dist/cache/index.js"
+    },
+    "./external": {
+      "types": "./dist/external/index.d.ts",
+      "default": "./dist/external/index.js"
+    },
+    "./messaging": {
+      "types": "./dist/external/index.d.ts",
+      "default": "./dist/external/index.js"
+    }
+  },
+  "scripts": {
+    "build:js": "tsup",
+    "build:types": "tsc",
+    "build": "pnpm build:js && pnpm build:types",
+    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@prisma/config": "7.10.0",
+    "@types/node": "^26.5.1",
+    "@types/pg": "^8.23.1",
+    "prisma": "7.10.0",
+    "tsx": "^4.23.13"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.0"
+  }
+}
