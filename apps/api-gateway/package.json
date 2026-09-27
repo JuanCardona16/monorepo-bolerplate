@@ -8,7 +8,7 @@
     "build:js": "tsup",
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
-    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+    "dev": "tsx watch src/core/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +33,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }
 }
