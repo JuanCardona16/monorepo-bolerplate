@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to the same ref supersedes the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # `prisma/generated/` is gitignored and has no postinstall hook, but
+      # PrismaAuthRepository / PrismaRefreshTokenRepository import it by VALUE,
+      # so tsup and tsc both fail on a clean checkout without this step.
+      - name: Generate Prisma client
+        working-directory: packages/infrastructure
+        run: pnpm exec prisma generate --schema ./src/persistence/postgresSql/prisma/schema.prisma
+      - run: pnpm build
+
+  check-types:
+    name: check-types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        working-directory: packages/infrastructure
+        run: pnpm exec prisma generate --schema ./src/persistence/postgresSql/prisma/schema.prisma
+      - run: pnpm check-types
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        working-directory: packages/infrastructure
+        run: pnpm exec prisma generate --schema ./src/persistence/postgresSql/prisma/schema.prisma
+      # `test` dependsOn `^build`, so this job also builds infrastructure.
+      - run: pnpm test
