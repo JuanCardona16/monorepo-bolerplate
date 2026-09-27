@@ -1,4 +1,5 @@
 import { RefreshToken } from "../../domain/entities/RefreshToken.js";
+import { InvalidRefreshTokenError } from "../../domain/errors/InvalidRefreshTokenError.js";
 import { RefreshTokenRepository } from "../../domain/repositories/RefreshTokenRepository.js";
 import { RefreshTokenHasher } from "../ports/RefreshTokenHasher.js";
 import { TokenProvider } from "../ports/TokenProvider.js";
@@ -16,20 +17,20 @@ export class RefreshTokenUseCase {
 
   async execute(refreshDTO: RefreshInputDTO): Promise<RefreshOutputDTO> {
     if (!refreshDTO.refreshToken) {
-      throw new Error("Invalid refresh token.");
+      throw new InvalidRefreshTokenError();
     }
 
     const tokenHash = await this.refreshTokenHasher.hash(refreshDTO.refreshToken);
     const stored = await this.refreshTokenRepository.findByTokenHash(tokenHash);
     if (!stored) {
-      throw new Error("Invalid refresh token.");
+      throw new InvalidRefreshTokenError();
     }
     if (stored.isRevoked) {
       await this.refreshTokenRepository.revokeAllForUser(stored.userUuid);
-      throw new Error("Invalid refresh token.");
+      throw new InvalidRefreshTokenError();
     }
     if (stored.isExpired()) {
-      throw new Error("Invalid refresh token.");
+      throw new InvalidRefreshTokenError();
     }
 
     stored.revoke();

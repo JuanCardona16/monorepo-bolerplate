@@ -5,6 +5,7 @@ import { RefreshToken } from "../../domain/entities/RefreshToken.js";
 import { LoginInputDTO } from "../dtos/LoginInputDTO.js";
 import { LoginOutputDTO } from "../dtos/LoginOutputDTO.js";
 import { PasswordHasher } from "../ports/PasswordHasher.js";
+import { InvalidCredentialsError } from "../../domain/errors/InvalidCredentialsError.js";
 import { RefreshTokenHasher } from "../ports/RefreshTokenHasher.js";
 import { TokenProvider } from "../ports/TokenProvider.js";
 
@@ -22,12 +23,12 @@ export class LoginUseCase {
   async execute(loginDTO: LoginInputDTO): Promise<LoginOutputDTO> {
     const email = new Email(loginDTO.email);
     if (!loginDTO.password) {
-      throw new Error("Credenciales inválidas.");
+      throw new InvalidCredentialsError();
     }
 
     const user = await this.authRepository.findByEmail(email.value);
     if (!user) {
-      throw new Error("Credenciales inválidas.");
+      throw new InvalidCredentialsError();
     }
 
     const isPasswordValid = await this.passwordHasher.compare(
@@ -35,7 +36,7 @@ export class LoginUseCase {
       user.passwordHash,
     );
     if (!isPasswordValid) {
-      throw new Error("Credenciales inválidas.");
+      throw new InvalidCredentialsError();
     }
 
     const token = await this.tokenProvider.generate({

@@ -1,11 +1,11 @@
+import { WeakPasswordError } from "../errors/WeakPasswordError.js";
+
 export class Password {
   readonly value: string;
 
   constructor(value: string) {
     if (!this.isValidPassword(value)) {
-      throw new Error(
-        "La contraseña debe tener al menos 8 caracteres, incluyendo una letra mayúscula, una letra minúscula y un número.",
-      );
+      throw new WeakPasswordError();
     }
     this.value = value;
   }

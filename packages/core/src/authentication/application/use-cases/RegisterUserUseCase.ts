@@ -1,5 +1,6 @@
 import { AuthUser } from "../../domain/entities/AuthUser.js";
 import { AuthRepository } from "../../domain/repositories/AuthRepository.js";
+import { UserAlreadyExistsError } from "../../domain/errors/UserAlreadyExistsError.js";
 import { Email } from "../../domain/value-objects/Email.js";
 import { Password } from "../../domain/value-objects/Password.js";
 import { PasswordHasher } from "../ports/PasswordHasher.js";
@@ -16,7 +17,7 @@ export class RegisterUserUseCase {
 
     const existingUser = await this.authRepository.findByEmail(email.value);
     if (existingUser) {
-      throw new Error("El usuario ya está registrado.");
+      throw new UserAlreadyExistsError();
     }
 
     const passwordHash = await this.passwordHasher.hash(password.value);

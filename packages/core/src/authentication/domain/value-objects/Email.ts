@@ -1,9 +1,11 @@
+import { InvalidEmailError } from "../errors/InvalidEmailError.js";
+
 export class Email {
   readonly value: string;
 
   constructor(value: string) {
     if (!this.isValidEmail(value)) {
-      throw new Error("El formato del email no es válido.");
+      throw new InvalidEmailError();
     }
     this.value = value;
   }

@@ -1,3 +1,5 @@
+import { InvalidRefreshTokenError } from "../errors/InvalidRefreshTokenError.js";
+
 export interface RefreshTokenProps {
   id: string;
   userUuid: string;
@@ -17,16 +19,16 @@ export class RefreshToken {
 
   constructor(props: RefreshTokenProps) {
     if (!props.id) {
-      throw new Error("Refresh token id is required.");
+      throw new InvalidRefreshTokenError("Refresh token id is required.");
     }
     if (!props.userUuid) {
-      throw new Error("Refresh token owner is required.");
+      throw new InvalidRefreshTokenError("Refresh token owner is required.");
     }
     if (!props.tokenHash) {
-      throw new Error("Refresh token hash is required.");
+      throw new InvalidRefreshTokenError("Refresh token hash is required.");
     }
     if (!(props.expiresAt instanceof Date) || Number.isNaN(props.expiresAt.getTime())) {
-      throw new Error("Refresh token expiry must be a valid date.");
+      throw new InvalidRefreshTokenError("Refresh token expiry must be a valid date.");
     }
     this._id = props.id;
     this._userUuid = props.userUuid;
