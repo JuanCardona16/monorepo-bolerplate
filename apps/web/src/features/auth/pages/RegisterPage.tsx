@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { AppRoutes } from "../../../constants/index";
 import { ApiError } from "../../../core/errors/ApiError";
 import { useRegister } from "../hooks";

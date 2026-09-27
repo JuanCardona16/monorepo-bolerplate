@@ -1,4 +1,4 @@
-import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Link, Navigate, Outlet, useNavigate } from "react-router";
 import { ApiPaths, AppRoutes } from "../../constants/index";
 import { api } from "../../infrastructure/http/apiClient";
 import { useAuthStore } from "../../features/auth/stores/auth";
