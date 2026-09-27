@@ -13,7 +13,7 @@
 - [x] **T1** Modelar refresh con estado en `core` — entidad `RefreshToken`, puerto `RefreshTokenRepository`, puerto `RefreshTokenHasher`, DTOs, `RefreshTokenUseCase` funcional, `LoginUseCase` emite el par access+refresh. Ruta: inline (sin subagentes por decisión). Aceptación: `pnpm --filter @repo/core build` en verde (verificado 2026-09-27, exit 0).
 - [x] **T2** Errores de dominio tipados en inglés + migrar `Login/Register/Refresh` y VOs. Ruta: inline. Aceptación: `pnpm --filter @repo/core build` en verde + grep sin español (verificado 2026-09-27). Commit `fd41aba`.
 - [x] **T3** Comportamiento en `AuthUser` (roles), VO de rol, `findByUuid`/`update` en repositorio. Ruta: inline. Build exit 0. Commit `0ce4f74` (incluyó doc pendiente de T2).
-- [ ] **T4** Puerto de UUID + DTO en Register + `implements` explícito en Bcrypt.
+- [x] **T4** Puerto de UUID + DTO en Register + `implements` explícito en Bcrypt. Ruta: inline. Build `core` y `security` exit 0. Commit `9396657`.
 - [ ] **T5** Adapter Prisma de `AuthRepository` + `RefreshTokenRepository` + mappers en `infrastructure`.
 - [ ] **T6** Decidir submódulos vacíos de infra (`mongodb/cache/external/messaging/shared/config`), bug `exports["./messaging"]`, superficies `index.ts`.
 

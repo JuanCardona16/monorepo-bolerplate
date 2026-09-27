@@ -232,6 +232,9 @@ importers:
       '@prisma/client':
         specifier: 7.10.0
         version: 7.10.0(prisma@7.10.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
+      '@repo/core':
+        specifier: workspace:*
+        version: link:../core
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2

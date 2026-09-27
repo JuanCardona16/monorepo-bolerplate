@@ -27,6 +27,9 @@ out/
 build
 dist
 
+# Prisma generated client (build artifact, regenerate via prisma generate)
+packages/infrastructure/src/persistence/postgresSql/prisma/generated/
+
 
 # Debug
 npm-debug.log*

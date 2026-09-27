@@ -19,3 +19,17 @@ model AuthUserSchema {
   @@map("auth_users")
 }
 
+model RefreshTokenSchema {
+  id        String    @id @default(uuid())
+  userUuid  String    @map("user_uuid")
+  tokenHash String    @unique @map("token_hash")
+  roles     String[]  @default([])
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([userUuid])
+  @@map("refresh_tokens")
+}
+
