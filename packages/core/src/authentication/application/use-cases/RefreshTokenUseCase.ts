@@ -1,6 +1,7 @@
 import { RefreshToken } from "../../domain/entities/RefreshToken.js";
 import { InvalidRefreshTokenError } from "../../domain/errors/InvalidRefreshTokenError.js";
 import { RefreshTokenRepository } from "../../domain/repositories/RefreshTokenRepository.js";
+import { IdGenerator } from "../ports/IdGenerator.js";
 import { RefreshTokenHasher } from "../ports/RefreshTokenHasher.js";
 import { TokenProvider } from "../ports/TokenProvider.js";
 import { RefreshInputDTO } from "../dtos/RefreshInputDTO.js";
@@ -13,6 +14,7 @@ export class RefreshTokenUseCase {
     private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly refreshTokenHasher: RefreshTokenHasher,
     private readonly tokenProvider: TokenProvider,
+    private readonly idGenerator: IdGenerator,
   ) {}
 
   async execute(refreshDTO: RefreshInputDTO): Promise<RefreshOutputDTO> {
@@ -36,9 +38,9 @@ export class RefreshTokenUseCase {
     stored.revoke();
     await this.refreshTokenRepository.save(stored);
 
-    const rawToken = crypto.randomUUID();
+    const rawToken = this.idGenerator.generate();
     const rotated = new RefreshToken({
-      id: crypto.randomUUID(),
+      id: this.idGenerator.generate(),
       userUuid: stored.userUuid,
       tokenHash: await this.refreshTokenHasher.hash(rawToken),
       roles: Array.from(stored.roles),

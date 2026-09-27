@@ -6,6 +6,7 @@ import { LoginInputDTO } from "../dtos/LoginInputDTO.js";
 import { LoginOutputDTO } from "../dtos/LoginOutputDTO.js";
 import { PasswordHasher } from "../ports/PasswordHasher.js";
 import { InvalidCredentialsError } from "../../domain/errors/InvalidCredentialsError.js";
+import { IdGenerator } from "../ports/IdGenerator.js";
 import { RefreshTokenHasher } from "../ports/RefreshTokenHasher.js";
 import { TokenProvider } from "../ports/TokenProvider.js";
 
@@ -18,6 +19,7 @@ export class LoginUseCase {
     private readonly tokenProvider: TokenProvider,
     private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly refreshTokenHasher: RefreshTokenHasher,
+    private readonly idGenerator: IdGenerator,
   ) {}
 
   async execute(loginDTO: LoginInputDTO): Promise<LoginOutputDTO> {
@@ -44,9 +46,9 @@ export class LoginUseCase {
       roles: Array.from(user.roles),
     });
 
-    const rawRefreshToken = crypto.randomUUID();
+    const rawRefreshToken = this.idGenerator.generate();
     const refreshToken = new RefreshToken({
-      id: crypto.randomUUID(),
+      id: this.idGenerator.generate(),
       userUuid: user.uuid,
       tokenHash: await this.refreshTokenHasher.hash(rawRefreshToken),
       roles: Array.from(user.roles),

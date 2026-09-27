@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
+import { PasswordHasher } from "@repo/core/authentication";
 
-export class BcryptPasswordHasher {
+export class BcryptPasswordHasher implements PasswordHasher {
   constructor(private readonly saltRounds: number = 10) {}
 
   async hash(password: string): Promise<string> {
