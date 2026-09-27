@@ -1,0 +1,14 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "extends": "../../packages/typescript-config/base.json",
+  "compilerOptions": {
+    // File Layout
+    "outDir": "./dist",
+    // Required for React: the shared base is backend-oriented and sets no jsx flag.
+    "jsx": "react-jsx"
+  },
+  // NOTE: differs from packages tsconfig — an app also typechecks vite.config.ts
+  // at the root, which rootDir "./src" would reject (verified TS6059).
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}
