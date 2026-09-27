@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { PublicRoutes } from "../../../constants/index.js";
+import { PrivateRoutes, PublicRoutes } from "../../../constants/index.js";
 import { asyncHandler } from "../../../core/errors/index.js";
 import { createAuthorize } from "../../../core/middleware/auth/authorize.js";
 import { loginLimiter } from "../../../core/middleware/rateLimit/limiter.js";
@@ -30,6 +30,12 @@ authenticationPaths.post(
   PublicRoutes.LOGOUT,
   authorize,
   asyncHandler(authController.logout),
+);
+
+authenticationPaths.get(
+  PrivateRoutes.ME,
+  authorize,
+  asyncHandler(authController.me),
 );
 
 export default authenticationPaths;

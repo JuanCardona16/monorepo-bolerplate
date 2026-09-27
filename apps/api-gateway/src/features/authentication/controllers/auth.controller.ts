@@ -1,4 +1,5 @@
 import {
+  GetProfileUseCase,
   LoginUseCase,
   LogoutUseCase,
   RefreshTokenUseCase,
@@ -27,11 +28,13 @@ export class AuthController {
     private readonly registerUseCase: RegisterUserUseCase,
     private readonly refreshUseCase: RefreshTokenUseCase,
     private readonly logoutUseCase: LogoutUseCase,
+    private readonly getProfileUseCase: GetProfileUseCase,
   ) {
     this.register = this.register.bind(this);
     this.login = this.login.bind(this);
     this.refresh = this.refresh.bind(this);
     this.logout = this.logout.bind(this);
+    this.me = this.me.bind(this);
   }
 
   async register(req: Request, res: Response, _next: NextFunction) {
@@ -71,5 +74,11 @@ export class AuthController {
       await this.logoutUseCase.execute(user.uuid);
     }
     res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH }).status(204).send();
+  }
+
+  async me(req: Request, res: Response, _next: NextFunction) {
+    const user = (req as AuthenticatedRequest).user;
+    const profile = await this.getProfileUseCase.execute(user?.uuid ?? "");
+    res.status(200).json({ success: true, data: profile });
   }
 }

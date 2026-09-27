@@ -22,6 +22,7 @@ export * from './domain/repositories/RefreshTokenRepository.js';
 export * from './application/use-cases/LoginUseCase.js';
 export * from './application/use-cases/RefreshTokenUseCase.js';
 export * from './application/use-cases/LogoutUseCase.js';
+export * from './application/use-cases/GetProfileUseCase.js';
 export * from './application/use-cases/RegisterUserUseCase.js';
 export * from './domain/value-objects/Email.js';
 export * from './domain/value-objects/Password.js';

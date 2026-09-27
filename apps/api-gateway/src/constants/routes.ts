@@ -7,3 +7,7 @@ export enum PublicRoutes {
   REFRESH = "/refresh",
   LOGOUT = "/logout",
 }
+
+export enum PrivateRoutes {
+  ME = "/me",
+}
