@@ -2,6 +2,8 @@ import jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
 import { TokenPayload, TokenProvider } from "@repo/core/authentication";
 
+export type TokenExpiry = SignOptions["expiresIn"];
+
 export class JwtTokenProvider implements TokenProvider {
   constructor(
     private readonly secret: string,

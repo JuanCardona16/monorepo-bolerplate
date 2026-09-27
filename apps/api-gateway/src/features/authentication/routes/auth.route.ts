@@ -4,10 +4,11 @@ import { asyncHandler } from "../../../core/errors/index.js";
 import { createAuthorize } from "../../../core/middleware/auth/authorize.js";
 import { loginLimiter } from "../../../core/middleware/rateLimit/limiter.js";
 import { validateWithZod } from "../../../core/middleware/validate/validateWithZod.js";
-import { authController, tokenProvider } from "../../../core/di/container.js";
+import { getContainer } from "../../../core/di/container.js";
 import { loginSchema, registerSchema } from "../schemas/auth.schemas.js";
 
 const authenticationPaths: Router = Router();
+const { authController, tokenProvider } = getContainer();
 const authorize = createAuthorize(tokenProvider);
 
 authenticationPaths.post(

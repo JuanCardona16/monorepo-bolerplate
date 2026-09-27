@@ -1,6 +1,6 @@
 import {
   LoginUseCase,
-  RefreshTokenRepository,
+  LogoutUseCase,
   RefreshTokenUseCase,
   RegisterUserUseCase,
 } from "@repo/core/authentication";
@@ -26,7 +26,7 @@ export class AuthController {
     private readonly loginUseCase: LoginUseCase,
     private readonly registerUseCase: RegisterUserUseCase,
     private readonly refreshUseCase: RefreshTokenUseCase,
-    private readonly refreshTokens: RefreshTokenRepository,
+    private readonly logoutUseCase: LogoutUseCase,
   ) {
     this.register = this.register.bind(this);
     this.login = this.login.bind(this);
@@ -68,7 +68,7 @@ export class AuthController {
   async logout(req: Request, res: Response, _next: NextFunction) {
     const user = (req as AuthenticatedRequest).user;
     if (user) {
-      await this.refreshTokens.revokeAllForUser(user.uuid);
+      await this.logoutUseCase.execute(user.uuid);
     }
     res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH }).status(204).send();
   }
