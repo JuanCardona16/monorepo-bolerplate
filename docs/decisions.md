@@ -379,6 +379,40 @@ detectar nada fue la señal de que el comentario, no el código, estaba mal.
 
 ---
 
+## D-021 — La tercera vez que caía la misma trampa, se quita la trampa
+
+**Decisión.** `apps/api-gateway/src/test/setupEnv.ts`, registrado como
+`setupFiles` en `vitest.config.ts`, define el env de test para **todas** las
+suites del paquete.
+
+**Por qué.** Esta era la tercera suite que pasaba local y fallaba en CI con
+`Missing required environment variable: TOKEN_SECRET_KEY`. La causa es siempre la
+misma: importar algo que llega a `config/env/index.ts`, cuyo `required()` corre
+**al importarse**, antes de que un `beforeAll` o un `vi.stubEnv` puedan ejecutarse.
+Localmente lo tapaba el `.env.local` del desarrollador.
+
+Había escrito la trampa en `AGENTS.md` **dos veces**. La tercera vez que caí,
+documentarla otra vez dejó de ser una solución: el repo estaba produciendo el
+mismo bug de forma repetible.
+
+**Un setup file corre antes de que se importe cualquier módulo de test.** Eso
+elimina la clase de bug, no el síntoma: ninguna suite nueva puede olvidarlo.
+
+**Aprendido.**
+
+1. **Un recordatorio que hay que repetir no es un control.** Cuando una regla
+   aparece dos veces en la documentación y igual se cumple mal, la respuesta
+   correcta es cambiar la estructura, no escribir la regla una tercera vez.
+2. **Verificar la paridad con CI moviendo `.env.local` aside.** Un run local en
+   verde no prueba nada sobre CI, y esa es exactamente la razón por la que el
+   bug arrived tres veces: la única señal útil era simular el entorno de CI, y
+   nadie lo hacía.
+3. El `DATABASE_URL` del setup apunta a un puerto cerrado **a propósito**: si
+   alguna suite intenta conectarse de verdad, tiene que fallar ruidosamente en
+   vez de alcanzar en silencio una base que casualmente esté levantada.
+
+---
+
 ## D-019 — Un `fetch` que rechaza se normaliza en el cliente, no en cada página
 
 **Decisión.** `apiClient.request` envuelve el `fetch` en un `try/catch` y
