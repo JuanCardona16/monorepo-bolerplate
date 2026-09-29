@@ -10,3 +10,12 @@ export const DocsPrefix: string = "/api/docs";
 
 /** Path, relative to `DocsPrefix`, of the raw OpenAPI document. */
 export const DocsSpecPath: string = "/openapi.json";
+
+/**
+ * Path, relative to `DocsPrefix`, of the machine-readable metadata payload.
+ *
+ * Distinct from the root, which serves the Swagger UI when it is enabled: a
+ * human who types "/api/docs" wants a browsable page, and a job that wants JSON
+ * should not have to accept HTML.
+ */
+export const DocsInfoPath: string = "/info";

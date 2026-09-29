@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { DocsPrefix, DocsSpecPath } from "../constants/docs.js";
+import { DocsInfoPath, DocsPrefix, DocsSpecPath } from "../constants/docs.js";
 // Imported through the barrel on purpose: it is the entry point `app.ts` will
 // use, so exercising it here keeps the export from rotting unnoticed.
 import { openApiDocument, routerDocs } from "../core/docs/index.js";
@@ -13,6 +13,11 @@ import { startServer, type RunningServer } from "./helpers/startServer.js";
  * would drag the database container into a test about a static document. What
  * matters here is the mount path and the payload, both of which are fully
  * determined by the router plus the prefix constant.
+ *
+ * `DOCS_ENABLED` is unset here, so it defaults to enabled (NODE_ENV is "test",
+ * which is not "production"). The disabled case needs its own file: the router
+ * reads the flag once, at import time, and a module cannot be re-imported with a
+ * different environment in the same process.
  */
 function buildDocsApp(): Express {
   const app: Express = express();
@@ -31,7 +36,7 @@ describe("openapi documentation endpoint", () => {
     await server.close();
   });
 
-  it("serves the raw specification at the docs root", async () => {
+  it("serves the raw specification", async () => {
     const response = await fetch(`${server.baseUrl}${DocsPrefix}${DocsSpecPath}`);
 
     expect(response.status).toBe(200);
@@ -41,17 +46,43 @@ describe("openapi documentation endpoint", () => {
     expect(body).toEqual(openApiDocument);
   });
 
-  it("answers the docs root with a discovery payload instead of a 404", async () => {
-    const response = await fetch(`${server.baseUrl}${DocsPrefix}`);
+  it("serves the Swagger UI at the docs root, because that is what a human types", async () => {
+    const response = await fetch(`${server.baseUrl}${DocsPrefix}/`, { redirect: "manual" });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(await response.text()).toContain("swagger-ui");
+  });
+
+  it("redirects the bare path to the trailing-slash form", async () => {
+    // Without the slash, swagger-ui-express emits relative asset URLs that the
+    // browser resolves against "/api" instead of "/api/docs/", and every one of
+    // them 404s. The redirect is what makes the UI usable at all.
+    const response = await fetch(`${server.baseUrl}${DocsPrefix}`, { redirect: "manual" });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(`${DocsPrefix}/`);
+  });
+
+  it("serves the UI's own assets, so the page is not a broken shell", async () => {
+    const response = await fetch(`${server.baseUrl}${DocsPrefix}/swagger-ui.css`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/css");
+  });
+
+  it("answers the info path with a discovery payload instead of a 404", async () => {
+    const response = await fetch(`${server.baseUrl}${DocsPrefix}${DocsInfoPath}`);
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       success: boolean;
-      data: { specification: string; ui: { enabled: boolean } };
+      data: { specification: string; ui: { enabled: boolean; path?: string } };
     };
     expect(body.success).toBe(true);
     expect(body.data.specification).toBe(DocsSpecPath);
-    expect(body.data.ui.enabled).toBe(false);
+    expect(body.data.ui.enabled).toBe(true);
+    expect(body.data.ui.path).toBe(DocsPrefix);
   });
 
   it("sits outside the versioned business prefix", () => {

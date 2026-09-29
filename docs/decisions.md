@@ -324,6 +324,95 @@ ponERlo es una regresión, no una feature, y el nombre. Verificado por mutación
 
 ---
 
+## D-020 — Swagger UI se apaga en producción, y su telemetría queda bloqueada
+
+**Decisiones.** Se agrega `swagger-ui-express@5.0.1` y `@types/swagger-ui-express`,
+la UI se monta en `GET /api/docs/`, y `DOCS_ENABLED` queda **OFF en producción**
+por default. `OPENAPI_SERVER_URL` configura el `servers` que usa "Try it out".
+La metadata de discovery se movió a `GET /api/docs/info`.
+
+**Por qué la UI apagada en producción.** Swagger UI es un inventario navegable y
+completo de cada endpoint, cada schema y cada código de error. En un despliegue
+público eso es reconocimiento regalado. Y el **spec crudo sigue el mismo flag**:
+un documento JSON que describe toda la superficie le sirve igual al atacante que
+la página renderizada.
+
+**Por qué `/info` aparte del root.** Un humano que escribe `/api/docs` quiere una
+página navegable, no un JSON. Un job que quiere JSON no debería tener que aceptar
+HTML. `/info` responde **siempre**, incluso con la documentación apagada: saber
+*dónde* está el spec no es lo mismo que poder navegarlo.
+
+### La telemetría
+
+`swagger-ui-express` arrastra `@scarf/scarf` (vía `swagger-ui-dist`), cuyo
+postinstall **le reporta a scarf.sh que este proyecto instaló el paquete**. Este
+repo no reporta instalaciones a terceros, así que se agregó
+`"@scarf/scarf": false` a `allowBuilds` en `pnpm-workspace.yaml`.
+
+Detalle que importa: **`pnpm add` corrió ese postinstall sin que disparara el
+chequeo de `strictDepBuilds`**, porque el paquete no estaba en la lista. La lista
+hay que revisarla cada vez que se agrega una dependencia; no confiar en que el
+install la cubra.
+
+### El bug que casi se va
+
+`swaggerUi.setup()` renderiza **solo el HTML**. Los assets estáticos los sirve
+`swaggerUi.serve`, que es un middleware aparte. Sin él, la página carga y **cada
+uno de sus propios assets responde `200` con la página HTML otra vez**: pantalla
+en blanco en el navegador, mientras cualquier chequeo de status code reporta
+verde. Lo detectó un test que asserta el `content-type` del CSS.
+
+### Un comentario que escribí y era falso
+
+Escribí que el spec tenía que registrarse **antes** de la UI "porque Express
+matchea en orden y el handler de la UI responde todo lo que queda bajo el mount".
+Lo verifiqué por mutación y **no era cierto**: `get("/")` matchea solo la raíz
+del mount, así que no puede tapar a un `get("/openapi.json")` hermano. Lo que sí
+era cierto es el `use`: **`use("/", handler)` matchea TODAS las rutas** bajo el
+mount, y un handler de UI montado así también responde `/openapi.json` con HTML
+y un 200. Corregí el comentario para decir la causa real.
+
+**Aprendido.** La explicación obvia y la correcta se parecen mucho. La primera
+sonaba razonable y era falsa; un test que la contradiga vale más que un
+comentario bien escrito. Y el hecho de que la mutación "obvia" pasara sin
+detectar nada fue la señal de que el comentario, no el código, estaba mal.
+
+---
+
+## D-021 — La tercera vez que caía la misma trampa, se quita la trampa
+
+**Decisión.** `apps/api-gateway/src/test/setupEnv.ts`, registrado como
+`setupFiles` en `vitest.config.ts`, define el env de test para **todas** las
+suites del paquete.
+
+**Por qué.** Esta era la tercera suite que pasaba local y fallaba en CI con
+`Missing required environment variable: TOKEN_SECRET_KEY`. La causa es siempre la
+misma: importar algo que llega a `config/env/index.ts`, cuyo `required()` corre
+**al importarse**, antes de que un `beforeAll` o un `vi.stubEnv` puedan ejecutarse.
+Localmente lo tapaba el `.env.local` del desarrollador.
+
+Había escrito la trampa en `AGENTS.md` **dos veces**. La tercera vez que caí,
+documentarla otra vez dejó de ser una solución: el repo estaba produciendo el
+mismo bug de forma repetible.
+
+**Un setup file corre antes de que se importe cualquier módulo de test.** Eso
+elimina la clase de bug, no el síntoma: ninguna suite nueva puede olvidarlo.
+
+**Aprendido.**
+
+1. **Un recordatorio que hay que repetir no es un control.** Cuando una regla
+   aparece dos veces en la documentación y igual se cumple mal, la respuesta
+   correcta es cambiar la estructura, no escribir la regla una tercera vez.
+2. **Verificar la paridad con CI moviendo `.env.local` aside.** Un run local en
+   verde no prueba nada sobre CI, y esa es exactamente la razón por la que el
+   bug arrived tres veces: la única señal útil era simular el entorno de CI, y
+   nadie lo hacía.
+3. El `DATABASE_URL` del setup apunta a un puerto cerrado **a propósito**: si
+   alguna suite intenta conectarse de verdad, tiene que fallar ruidosamente en
+   vez de alcanzar en silencio una base que casualmente esté levantada.
+
+---
+
 ## D-019 — Un `fetch` que rechaza se normaliza en el cliente, no en cada página
 
 **Decisión.** `apiClient.request` envuelve el `fetch` en un `try/catch` y

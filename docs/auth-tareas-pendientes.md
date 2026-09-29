@@ -15,7 +15,7 @@ refresh con rotación y revocación, logout, perfil, gestión de roles, spec
 OpenAPI, y las dos bases (Neon, que usa la app, y Postgres local, que usan los
 tests de integración) migradas y verificadas.
 
-**546 tests**, verdes en los tres checks requeridos de `main`.
+**553 tests**, verdes en los tres checks requeridos de `main`.
 
 ## Paquetes (lógica de negocio) — completo
 
@@ -39,7 +39,9 @@ tests de integración) migradas y verificadas.
 - [x] Configuración de deploy: `TRUST_PROXY_HOPS`, `REFRESH_COOKIE_SAME_SITE`,
       `REFRESH_COOKIE_SECURE` (D-003, D-004).
 - [x] Bootstrap del primer admin: `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>` (D-012).
-- [x] Spec OpenAPI en `GET /api/docs/openapi.json`, montado como hermano de `/api/v1`.
+- [x] Spec OpenAPI en `GET /api/docs/openapi.json` y **Swagger UI** en
+      `GET /api/docs/`, montados como hermanos de `/api/v1`. Apagados por default
+      en producción vía `DOCS_ENABLED` (D-020).
 - [x] Access log: una línea por request (método, ruta, status, duración), sin body,
       sin `Authorization`, sin query string, y con la IP solo bajo
       `ACCESS_LOG_IPS=true` (D-015, D-016).
@@ -51,10 +53,6 @@ tests de integración) migradas y verificadas.
 
 ### Requiere autorización del usuario
 
-- [ ] **Swagger UI.** El spec ya existe y se sirve. Renderizarlo necesita
-      `swagger-ui-express`, que no es dependencia: no se agregó sin autorización.
-      Cuando se autorice, alcanza con montar la UI en `core/docs/docs.route.ts` y
-      cambiar `ui.enabled` a `true`. El discovery de `GET /api/docs` ya lo dice.
 - [ ] **Reset de contraseña** y **login con Google**. La UI los muestra
       deshabilitados con `title="Coming soon"`, que es honesto: no hay backend.
       `RESEND_KEY`, `CLIENT_GOOGLE_ID` y `CLIENT_GOOGLE_SECRET` se eliminaron por

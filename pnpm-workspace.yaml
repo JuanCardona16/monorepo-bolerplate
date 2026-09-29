@@ -13,3 +13,8 @@ allowBuilds:
   bcrypt: true
   esbuild: true
   prisma: true
+  # Transitive dep of swagger-ui-express (via swagger-ui-dist). Its postinstall
+  # phones home to scarf.sh to report that this project installed the package.
+  # The UI works without it, so the build script is explicitly NOT approved:
+  # this repo does not report installs to third parties.
+  "@scarf/scarf": false
