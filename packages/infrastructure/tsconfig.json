@@ -6,5 +6,14 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "exclude": ["node_modules", "dist", "tsup.config.ts", "vitest.config.ts"]
+  // There is no `include`, so tsc globs every .ts under the package. Without
+  // the `__tests__` exclusion it emits compiled tests plus their .d.ts files
+  // into dist/, which a publish would ship as part of the package surface.
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tsup.config.ts",
+    "vitest.config.ts",
+    "src/**/__tests__/**"
+  ]
 }
