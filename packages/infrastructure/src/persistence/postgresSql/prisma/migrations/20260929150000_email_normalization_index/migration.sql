@@ -1,0 +1,11 @@
+-- Defence in depth for `Email` normalization.
+--
+-- `Email` in @repo/core lowercases and trims, so in theory every value that
+-- reaches this table is already canonical and the plain unique index on `email`
+-- is enough. The column is TEXT with a btree index, though, which compares byte
+-- by byte: any future write that bypasses the value object would silently create
+-- `User@x.com` next to `user@x.com` for the same mailbox.
+--
+-- A functional unique index on `lower(email)` closes that at the database level,
+-- so the constraint holds even if the application layer regresses.
+CREATE UNIQUE INDEX "auth_users_email_lower_key" ON "auth_users"(lower("email"));

@@ -6,15 +6,14 @@ import { Email } from "../value-objects/Email.js";
 describe("Email", () => {
   describe("constructor", () => {
     it.each([
-      "user@example.com",
-      "first.last@example.co.uk",
-      "user+tag@example.io",
-      "USER@EXAMPLE.COM",
-      "123456@123.123",
-    ])("accepts %s and exposes it unchanged on `value`", (value) => {
+      ["user@example.com", "user@example.com"],
+      ["first.last@example.co.uk", "first.last@example.co.uk"],
+      ["user+tag@example.io", "user+tag@example.io"],
+      ["123456@123.123", "123456@123.123"],
+    ])("accepts %s and exposes it normalized", (value, expected) => {
       const email = new Email(value);
 
-      expect(email.value).toBe(value);
+      expect(email.value).toBe(expected);
     });
 
     it.each([
@@ -40,18 +39,30 @@ describe("Email", () => {
       );
     });
 
-    it("stores the value verbatim without lowercasing or trimming", () => {
-      // The regex anchors on both ends, so surrounding whitespace is rejected,
-      // but the accepted casing is preserved exactly as given.
+    it("lowercases the address", () => {
       const email = new Email("User.Name+Tag@Example.COM");
 
-      expect(email.value).toBe("User.Name+Tag@Example.COM");
+      expect(email.value).toBe("user.name+tag@example.com");
     });
 
-    it("rejects surrounding whitespace because the regex is anchored", () => {
-      expect(() => new Email("  user@example.com")).toThrow(InvalidEmailError);
-      expect(() => new Email("user@example.com  ")).toThrow(InvalidEmailError);
-      expect(() => new Email("user@example.com\n")).toThrow(InvalidEmailError);
+    it("trims surrounding whitespace instead of rejecting it", () => {
+      // The regex used to be anchored, so padding was an error. Normalizing
+      // first means a padded address is accepted and stored canonically.
+      expect(new Email("  user@example.com").value).toBe("user@example.com");
+      expect(new Email("user@example.com  ").value).toBe("user@example.com");
+      expect(new Email("\tuser@example.com\n").value).toBe("user@example.com");
+    });
+
+    it("collapses differently cased spellings of the same address to one identity", () => {
+      // The reason normalization exists: `auth_users.email` is a plain TEXT
+      // column with a btree index, so without this the database would hold
+      // `User@x.com` and `user@x.com` as two separate accounts for one mailbox.
+      expect(new Email("User@Example.com").value).toBe(new Email("user@example.com").value);
+      expect(new Email("  USER@EXAMPLE.COM ").value).toBe(new Email("user@example.com").value);
+    });
+
+    it("rejects an address that is only whitespace", () => {
+      expect(() => new Email("   ")).toThrow(InvalidEmailError);
     });
   });
 });

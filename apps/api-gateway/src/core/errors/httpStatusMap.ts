@@ -13,5 +13,9 @@ export function statusForCode(code: string | undefined): number {
   if (!code) {
     return 500;
   }
-  return STATUS_BY_CODE[code] ?? 500;
+  // `Object.hasOwn` guards the prototype chain: without it, `code: "constructor"`
+  // or `"toString"` resolves to an inherited function instead of a status, and
+  // that value would be handed to `res.status()`. A `Map` would avoid this too,
+  // but the lookup here is on a short, fixed set of codes.
+  return Object.hasOwn(STATUS_BY_CODE, code) ? (STATUS_BY_CODE[code] ?? 500) : 500;
 }

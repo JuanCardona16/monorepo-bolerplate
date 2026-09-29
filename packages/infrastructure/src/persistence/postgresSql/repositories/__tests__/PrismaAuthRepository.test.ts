@@ -104,10 +104,15 @@ describeDb("PrismaAuthRepository (real Postgres)", () => {
       await expect(repository.findByEmail(missing)).resolves.toBeNull();
     });
 
-    it("treats the email column as case-sensitive", async () => {
-      // `email` is a plain TEXT column with a plain unique btree index, so the
-      // database compares it byte by byte. Nothing normalises the case before
-      // the query reaches Postgres.
+    it("stores the email column as case-sensitive text", async () => {
+      // The DATABASE is still case-sensitive: `email` is a plain TEXT column
+      // with a plain unique btree index, compared byte by byte.
+      //
+      // Correctness no longer depends on that, because `Email` in @repo/core
+      // normalizes to lowercase and every write goes through it. This test
+      // exists to document that the column itself is NOT a second line of
+      // defence: any code path that bypasses the value object would still be
+      // able to create `User@x.com` alongside `user@x.com`.
       const email = uniqueEmail();
       await repository.save(makeUser({ email }));
 
@@ -115,6 +120,16 @@ describeDb("PrismaAuthRepository (real Postgres)", () => {
 
       expect(upperCased).not.toBe(email);
       await expect(repository.findByEmail(upperCased)).resolves.toBeNull();
+    });
+
+    it("finds the row when queried with the normalized spelling", async () => {
+      // The counterpart of the test above: once the domain has normalized,
+      // the normalized spelling is the only one that ever gets stored, so it
+      // is the one that resolves.
+      const email = uniqueEmail();
+      await repository.save(makeUser({ email }));
+
+      await expect(repository.findByEmail(email.toLowerCase())).resolves.not.toBeNull();
     });
   });
 

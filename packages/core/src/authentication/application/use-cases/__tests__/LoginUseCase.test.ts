@@ -138,16 +138,16 @@ describe("LoginUseCase", () => {
       expect(deps.authRepository.findByEmail).toHaveBeenCalledWith("user@example.com");
     });
 
-    // `Email` validates the format but stores the string verbatim, so the
-    // lookup key keeps the caller's casing. Pinned here because it is a
-    // duplicate-account hazard: `User@x.com` and `user@x.com` are distinct
-    // rows. If normalization is ever added, this test must change on purpose.
-    it("passes the email through with its original casing", async () => {
+    // Login must look the user up with the same canonical spelling that
+    // registration stored, otherwise a user could register in one casing and
+    // then be unable to log in with it. `Email` normalizes, so the lookup key
+    // is the lowercase form regardless of what the caller typed.
+    it("looks the user up with the normalized email", async () => {
       const deps = makeDeps();
 
-      await useCase(deps).execute({ email: "User@Example.com", password: "correct-horse" });
+      await useCase(deps).execute({ email: "  User@Example.COM  ", password: "correct-horse" });
 
-      expect(deps.authRepository.findByEmail).toHaveBeenCalledWith("User@Example.com");
+      expect(deps.authRepository.findByEmail).toHaveBeenCalledWith("user@example.com");
     });
 
     it("compares the password against the stored hash", async () => {
