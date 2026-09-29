@@ -48,25 +48,45 @@ Type errors in the libraries are not missed, because `pnpm build` runs `build:ty
 4. **Turbo remote caching is not configured.** It would need a token and a scoped remote; the local cache already makes reruns cheap.
 5. **`apps/web` still reports green with zero tests** (`--passWithNoTests`). Once the first frontend test lands, remove the flag so an empty suite fails.
 
-## Required manual step the orchestrator could NOT do
-The branch protection rule currently requires at least 1 approving review, and the GitHub UI only offers 1 through 6. The REST API accepts 0, which keeps the pull request mandatory while requiring no reviewers — the correct setting for a solo developer. This requires a personal access token and must be run by the user:
+## Branch protection: applied 2026-09-29
 
-```powershell
-gh api -X PATCH repos/JuanCardona16/monorepo-bolerplate/branches/main/protection/required_pull_request_reviews `
-  -F required_approving_review_count=0
+`main` was **not** protected (API returned `404 Branch not protected`), so the rule was created from scratch with `PUT` rather than patched. Final state, read back from the API:
+
+| Field | Value |
+|---|---|
+| `required_status_checks.contexts` | `build`, `check-types`, `test` |
+| `required_status_checks.strict` | `true` (branch must be up to date) |
+| `required_approving_review_count` | `0` (solo developer) |
+| `enforce_admins` | `true` |
+| `allow_force_pushes` / `allow_deletions` | `false` / `false` |
+| `required_conversation_resolution` | `true` |
+
+Note this supersedes the earlier `PATCH` recipe above: with no existing rule there was nothing to preserve, so `PUT` with the full body was the correct call. A `PATCH` would have failed against a non-protected branch.
+
+## What the first real runs exposed
+
+The workflow had never executed. When it finally did (runs `36521600006` and `36521571544`), all three jobs failed at `pnpm install --frozen-lockfile`:
+
+```
+Ignored build scripts: @prisma/engines@7.10.0, bcrypt@6.0.0
+Error: ERR_PNPM_IGNORED_BUILDS
 ```
 
-`PATCH` is used rather than `PUT` on purpose: `PUT` requires every field and would reset `required_status_checks` to null.
+`strictDepBuilds` defaults to `true`, so an unreviewed postinstall aborts the install. This is invisible locally: `node_modules` is already populated, so pnpm never re-evaluates the scripts.
 
-## Order of operations
-1. Run the PATCH above (approvals → 0). User action, needs a token.
-2. Push this branch so the workflow runs once.
-3. Only after the first successful run, mark the `build`, `check-types` and `test` checks as required. GitHub will not offer a check that has never reported.
-4. Confirm PR #1 reaches a mergeable state.
+Fixing it took two attempts, and the obvious answer is wrong twice over:
+
+1. `onlyBuiltDependencies` in `package.json` is dead on arrival. pnpm 12 warns `The "pnpm" field in package.json is no longer read by pnpm`, and `onlyBuiltDependencies` was **removed in pnpm v11** and replaced by `allowBuilds`.
+2. Settings moved out of the manifest: since pnpm 11 they live in `pnpm-workspace.yaml`.
+
+The first fix (`@prisma/engines`, `bcrypt`) was correct but incomplete — the next run surfaced a second tier that had been masked: `esbuild@0.27.7`, `esbuild@0.28.2`, `prisma@7.10.0`. All four are now listed. `dangerouslyAllowAllBuilds` was deliberately not used; it would let any future transitive dependency run scripts unreviewed.
 
 ## Acceptance criteria
 - [x] Workflow exists with three parallel jobs
 - [x] Every command the workflow runs has been executed locally and exits 0
 - [x] The Prisma client generation blocker is handled
-- [ ] First GitHub Actions run is green (cannot be verified until pushed)
-- [ ] Status checks marked as required (requires step 3 above)
+- [x] `pnpm install` succeeds on a clean runner (`allowBuilds` for all four packages)
+- [x] First GitHub Actions run is green (run `36523645201`: build, check-types, test all `success`)
+- [x] Status checks marked as required on `main`
+- [x] PR #3 reaches `mergeStateStatus: CLEAN` with all three checks `SUCCESS`
+
