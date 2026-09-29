@@ -36,9 +36,22 @@ Library packages (`core`, `security`, `infrastructure`) each define:
 
 ## Verification
 
-- No test runner, no `*.test.*`, no `test` script, no `.github/` CI found. Do not invent a test command.
-- Closest to typecheck: `pnpm --filter <pkg> build:types` (`tsc` with `declaration: true`). Root `lint`/`check-types` pipelines are no-ops for libs that lack those scripts.
-- Full check: `pnpm build` then `pnpm --filter <pkg> build:types`.
+- **Vitest 4.1.10** is the test runner. `pnpm test` = `turbo run test` (8 tasks, green as of 2026-09-29). Domain coverage lives in `packages/core/src/authentication/domain/__tests__/` (87 tests).
+- **`.github/workflows/ci.yml` exists** — three parallel jobs (`build`, `check-types`, `test`), no `needs` between them, `concurrency` cancels superseded runs. All three are **required status checks on `main`** (verified green, run `36524305417`).
+- `main` is protected: required checks, `strict: true`, `enforce_admins: true`, **0 approving reviews** (solo developer), force-push and deletion blocked. Push straight to `main` is rejected — go through a PR.
+- Closest to a standalone typecheck: `pnpm --filter <pkg> build:types` (`tsc` with `declaration: true`). Root `check-types` runs **only 1 task** because only `apps/web` defines that script; library type errors are still caught by `pnpm build`, which runs `build:types`. The CI job name overstates its scope — see `odd/tasks/ci-workflow.md`.
+- `apps/web` and `apps/api-gateway` run Vitest with `--passWithNoTests`, so an empty suite reports green. The flag must go once the first real test lands in each app.
+- Full local gate: `pnpm install --frozen-lockfile` → `pnpm build` → `pnpm test`.
+
+### pnpm gotcha that will waste your time again
+
+`pnpm install` passing locally proves nothing about CI. A populated `node_modules` means pnpm never re-evaluates postinstall scripts, which is exactly the check that fails on a clean runner. To actually exercise build scripts, run `pnpm rebuild`.
+
+- `strictDepBuilds` defaults to `true`, so an unapproved postinstall aborts install with `ERR_PNPM_IGNORED_BUILDS`.
+- Approved packages are declared in **`pnpm-workspace.yaml`** under `allowBuilds`, currently `@prisma/engines`, `bcrypt`, `esbuild`, `prisma`.
+- `onlyBuiltDependencies` is **removed** in pnpm v11 and the `pnpm` field in `package.json` is no longer read at all. Both are dead ends. pnpm 12 settings live in `pnpm-workspace.yaml`.
+- `dangerouslyAllowAllBuilds` is deliberately not used: it would let unreviewed transitive dependencies run scripts.
+
 
 ## Layout (real code, not README)
 
@@ -58,6 +71,9 @@ Library packages (`core`, `security`, `infrastructure`) each define:
 - Formatting: Prettier with no config file; `pnpm format` rewrites in place — run only on touched files or expect repo-wide diffs.
 - Codegraph first: repo has `.codegraph/` index. Use CLI (`status`, `query`, `explore`, `callers`) before Read/Glob/Grep on structural questions; `sync <root>` after edits. Skill: `codegraph` (global).
 - Git: `main`, conventional commits in Spanish, no AI attribution. Identity is repo-local.
+- **The remote is named `main`, not `origin`.** `origin` does not exist; `git fetch origin` fails. Use `git fetch main`, `git push main <branch>`.
+- All work goes through a PR — `main` is protected and direct pushes are rejected. `gh pr merge <n> --merge` (merge commit, no squash/rebase).
+- Remote auth uses `GITHUB_TOKEN` from the environment, and **every shell call is a fresh process**: re-export it in each command rather than assuming it persisted.
 
 ## Api-gateway (user style — follow it)
 
