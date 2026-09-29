@@ -1,4 +1,5 @@
 import {
+  ChangeUserRolesUseCase,
   GetProfileUseCase,
   LoginUseCase,
   LogoutUseCase,
@@ -12,12 +13,19 @@ import {
   REFRESH_COOKIE_PATH,
 } from "../../../constants/index.js";
 import { HttpError } from "../../../core/errors/HttpError.js";
+import {
+  REFRESH_COOKIE_SAME_SITE,
+  REFRESH_COOKIE_SECURE,
+} from "../../../config/env/index.js";
 import { AuthenticatedRequest } from "../../../core/middleware/auth/authorize.js";
 
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  // `SameSite=strict` never sends the cookie on a cross-site request, which
+  // breaks the refresh flow as soon as the API is not same-site with the web
+  // app. `lax` still blocks the cross-site POSTs CSRF depends on.
+  secure: REFRESH_COOKIE_SECURE,
+  sameSite: REFRESH_COOKIE_SAME_SITE,
   maxAge: REFRESH_COOKIE_MAX_AGE_MS,
   path: REFRESH_COOKIE_PATH,
 };
@@ -29,12 +37,14 @@ export class AuthController {
     private readonly refreshUseCase: RefreshTokenUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getProfileUseCase: GetProfileUseCase,
+    private readonly changeUserRolesUseCase: ChangeUserRolesUseCase,
   ) {
     this.register = this.register.bind(this);
     this.login = this.login.bind(this);
     this.refresh = this.refresh.bind(this);
     this.logout = this.logout.bind(this);
     this.me = this.me.bind(this);
+    this.changeUserRoles = this.changeUserRoles.bind(this);
   }
 
   async register(req: Request, res: Response, _next: NextFunction) {
@@ -89,5 +99,22 @@ export class AuthController {
     const user = (req as AuthenticatedRequest).user;
     const profile = await this.getProfileUseCase.execute(user?.uuid ?? "");
     res.status(200).json({ success: true, data: profile });
+  }
+
+  async changeUserRoles(req: Request, res: Response, _next: NextFunction) {
+    // `req.params` is typed as `string | string[]` because Express cannot know
+    // whether a segment repeats. A path parameter here never does, so take the
+    // first value rather than casting the whole thing away.
+    const rawUuid = req.params.uuid;
+    const targetUserUuid = Array.isArray(rawUuid) ? (rawUuid[0] ?? "") : (rawUuid ?? "");
+
+    const updated = await this.changeUserRolesUseCase.execute({
+      targetUserUuid,
+      roles: (req.body?.roles ?? []) as string[],
+    });
+    res.status(200).json({
+      success: true,
+      data: { uuid: updated.uuid, email: updated.email, roles: Array.from(updated.roles) },
+    });
   }
 }

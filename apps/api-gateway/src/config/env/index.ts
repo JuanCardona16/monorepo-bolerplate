@@ -19,6 +19,44 @@ export const DATABASE_URL = required("DATABASE_URL");
 export const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || "15m";
 export const BCRYPT_ROUNDS = parsePositiveInt("BCRYPT_ROUNDS", "10");
 
+/**
+ * How many reverse proxies sit in front of the app.
+ *
+ * `express-rate-limit` keys on the client IP. Without `trust proxy`, every
+ * request arrives with the proxy's address, so the 200/15min global limit is
+ * shared by all users and the first busy minute locks everyone out.
+ *
+ * Defaults to `0` (no proxy) because trusting a proxy you do not control lets a
+ * client forge `X-Forwarded-For` and bypass the rate limit entirely. Set it to
+ * the real hop count at deploy time: `1` behind a single nginx/Cloudflare/
+ * load balancer, `2` behind one of those in front of another.
+ */
+export const TRUST_PROXY_HOPS = parseNonNegativeInt("TRUST_PROXY_HOPS", "0");
+
+/**
+ * `SameSite` for the refresh cookie.
+ *
+ * `strict` never sends the cookie on any cross-site request, which breaks the
+ * refresh flow when the API is genuinely cross-site from the web app. `lax` is
+ * the browser default: still blocks the cross-site POSTs that CSRF relies on,
+ * while letting a top-level navigation carry the cookie. Set to `none` only
+ * when the API is on a different registrable domain, and then `REFRESH_COOKIE_SECURE`
+ * has to be true or the browser rejects the cookie outright.
+ */
+export const REFRESH_COOKIE_SAME_SITE = parseSameSite(
+  process.env.REFRESH_COOKIE_SAME_SITE,
+  "lax",
+);
+
+/**
+ * `Secure` on the refresh cookie. Defaults to true in production, where the app
+ * is expected to be served over HTTPS. Force it to false only for local HTTP.
+ */
+export const REFRESH_COOKIE_SECURE =
+  process.env.REFRESH_COOKIE_SECURE === "true" ||
+  (process.env.REFRESH_COOKIE_SECURE === undefined &&
+    process.env.NODE_ENV === "production");
+
 function parsePositiveInt(name: string, fallback: string): number {
   const raw = process.env[name] ?? fallback;
   const value = Number.parseInt(raw, 10);
@@ -28,6 +66,32 @@ function parsePositiveInt(name: string, fallback: string): number {
     );
   }
   return value;
+}
+
+function parseNonNegativeInt(name: string, fallback: string): number {
+  const raw = process.env[name] ?? fallback;
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(
+      `Invalid environment variable: ${name} must be a non-negative integer. Add it to .env.local or .env.`,
+    );
+  }
+  return value;
+}
+
+function parseSameSite(
+  raw: string | undefined,
+  fallback: "lax" | "strict" | "none",
+): "lax" | "strict" | "none" {
+  if (raw === undefined || raw === "") {
+    return fallback;
+  }
+  if (raw !== "lax" && raw !== "strict" && raw !== "none") {
+    throw new Error(
+      `Invalid environment variable: REFRESH_COOKIE_SAME_SITE must be one of lax, strict, none.`,
+    );
+  }
+  return raw;
 }
 
 // Optional until their features land (validated lazily at point of use)
