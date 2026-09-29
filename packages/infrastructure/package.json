@@ -20,7 +20,9 @@
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
     "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "prisma:generate": "prisma generate --schema ./src/persistence/postgresSql/prisma/schema.prisma",
+    "postinstall": "pnpm run prisma:generate"
   },
   "keywords": [],
   "author": "",
