@@ -169,7 +169,52 @@ corrió.**
 
 ---
 
-## D-011 — Nunca agregar dependencias sin autorización explícita
+## D-012 — El primer admin se promueve con un script, no con una ruta
+
+**Decisión.** `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>`
+(agrega `admin`, conserva los roles existentes, revoca los refresh tokens
+activos). `--remove` revierte. Es un script, no un endpoint.
+
+**Por qué.** `PUT /auth/users/:uuid/roles` exige `requireRole("admin")`, o sea
+que nadie puede otorgar el rol que no tiene. Sin una vía que **no** pase por la
+API, el primer admin no puede existir y el sistema de permisos queda inservible.
+La alternativa —un endpoint que otorga `admin` sin ya ser admin— es un camino de
+escalada de privilegios, no una funcionalidad.
+
+**Aprendido.** El caso del `email` con espacios y mayúsculas lo cubrió la
+normalización de `Email`: `new Email(raw).value`. Para los roles hace falta un
+`Set` y no un `push`: correr el script dos veces no debe duplicar el rol, y eso
+lo garantiza el `Set`.
+
+---
+
+## D-013 — `vi.mock` necesita el mismo especificador que el módulo bajo prueba
+
+**Decisión.** En `scripts/__tests__/promoteAdmin.test.ts`, el mock del cliente
+Prisma se registra como `vi.mock("../../client.js")`, no `vi.mock("../client.js")`.
+
+**Por qué.** El especificador se resuelve **desde el módulo que lo importa**, no
+desde el test. Escribirlo desde la ubicación del test hace que Vitest busque otro
+archivo, el mock **no se aplica en silencio**, y la suite termina
+**conectándose a una base de datos real**. Passing los 2 tests que pasaban y
+fallando los 8 restantes fue la señal.
+
+**Aprendido.** Un mock que no se aplica no falla: se degrada a producción. Vale
+la pena afirmarlo en el propio test, porque el síntoma (un error de conexión de
+Postgres en un test unitario) apunta en la dirección completamente opuesta a la
+causa.
+
+---
+
+## D-014 — Prisma `update` recibe un objeto, no dos argumentos
+
+**Aprendido.** `prisma.model.update({ where, data, select })` es **un** argumento.
+Escribí las aserciones como `calls[1].data` —copiando la forma de un método que
+toma `(where, data)`— y las 5 afirmaciones dieron `undefined` en silencio.
+Además faltaba `vi.clearAllMocks()` en el `beforeEach`, que hacía fallar el
+`not.toHaveBeenCalled()` por llamadas de tests anteriores.
+
+
 
 **Decisión.** `@testing-library/*` y cualquier otra dependencia nueva se piden
 antes.

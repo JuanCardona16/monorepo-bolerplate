@@ -1,49 +1,77 @@
 # Auth — Tareas pendientes
 
-> Revisado el 2026-09-29 contra el árbol vigente (`main` @ `264940a`).
+> Revisado el 2026-09-29 contra el árbol vigente (`main` @ `948ae8f`).
 > La parte HTTP vive en `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
-> Decisión registrada: **refresh tokens con estado** (rotación + persistencia, revocables).
+> Decisiones registradas con su motivo en [`decisions.md`](./decisions.md).
 >
-> Este archivo estaba desactualizado: listaba como pendientes adapters Prisma, errores
-> tipados y DI que ya existen. Cada ítem de abajo se verificó contra el código.
+> Este archivo se actualiza **junto al código**, no después. Que el próximo lector
+> tenga que cruzarlo con `AGENTS.md` para saber qué quedó vivo es exactamente el
+> defecto que ya se pagó una vez.
 
-## Paquetes (lógica de negocio)
+## Estado
+
+La feature de autenticación está operativa de punta a punta: registro, login,
+refresh con rotación y revocación, logout, perfil, gestión de roles, spec
+OpenAPI, y las dos bases (Neon, que usa la app, y Postgres local, que usan los
+tests de integración) migradas y verificadas.
+
+**515 tests**, verdes en los tres checks requeridos de `main`.
+
+## Paquetes (lógica de negocio) — completo
 
 - [x] Refresh con estado en `packages/core`: entidad/VO, métodos en `AuthRepository` y DTOs.
-- [x] Refresh incluido en `LoginOutputDTO` + DTOs de register/refresh.
-- [x] Errores de dominio tipados (`InvalidCredentialsError`, `UserAlreadyExistsError`, `WeakPasswordError`, `InvalidRefreshTokenError`, `InvalidEmailError`, `InvalidRoleError`), con `code` para que la gateway mapee a HTTP.
-- [x] Comportamiento en `AuthUser` (`assignRole`, cambio de hash) y roles tipados.
-- [x] `findByUuid` / `update` en `AuthRepository`.
+- [x] Errores de dominio tipados, con `code` para que la gateway mapee a HTTP.
+- [x] `findByUuid` / `update` en `AuthRepository` (los consume `ChangeUserRolesUseCase`).
 - [x] Generación de UUID inyectada como puerto en `RegisterUserUseCase`.
-- [x] `RegisterUserUseCase` unificado a DTO, igual que `LoginUseCase`.
-- [x] `implements PasswordHasher` en `BcryptPasswordHasher` (los cuatro adapters de `security` lo declaran: `BcryptPasswordHasher`, `JwtTokenProvider`, `Sha256RefreshTokenHasher`, `CryptoIdGenerator`).
-- [x] Adapters Prisma + mappers en `packages/infrastructure`: `repositories/PrismaAuthRepository.ts`, `repositories/PrismaRefreshTokenRepository.ts`, `mappers/AuthUserMapper.ts`, `mappers/RefreshTokenMapper.ts`.
-- [x] Superficie pública definida: `core` exporta `.` y `./authentication`; `infrastructure` exporta `.` y `./persistence/postgresSql`. El bug de `exports["./messaging"]` que apuntaba a `dist/external` ya no existe.
-- [x] Cobertura de tests del dominio de auth: 87 tests en `packages/core/src/authentication/domain/__tests__/`, verdes en CI.
+- [x] Adapters Prisma + mappers en `packages/infrastructure`.
+- [x] `ChangeUserRolesUseCase`: reemplazo total del conjunto de roles + revocación
+      de las sesiones del objetivo. Replace y no merge a propósito (D-005).
+- [x] Migraciones de Prisma aplicadas y verificadas en **ambas** bases.
 
-### Pendiente real en paquetes
+## Api-gateway — completo
 
-- [ ] **Migraciones de Prisma.** El schema existe y el cliente genera, pero no hay SQL de migración aplicado. Sin base de datos no hay forma de correr esto end-to-end.
+- [x] Rutas `POST /auth/register|login|refresh|logout`, `GET /auth/me`.
+- [x] Validación de borde, middleware Bearer, mapeo de errores a HTTP en `GlobalHandleError`.
+- [x] Raíz de composición DI (`core/di/container.ts`).
+- [x] Rate limit global y rate limit dedicado de login.
+- [x] `helmet`.
+- [x] RBAC: `PUT /api/v1/auth/users/:uuid/roles` con `requireRole("admin")` (D-005, D-006).
+- [x] Configuración de deploy: `TRUST_PROXY_HOPS`, `REFRESH_COOKIE_SAME_SITE`,
+      `REFRESH_COOKIE_SECURE` (D-003, D-004).
+- [x] Bootstrap del primer admin: `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>` (D-012).
+- [x] Spec OpenAPI en `GET /api/docs/openapi.json`, montado como hermano de `/api/v1`.
 
-## Api-gateway
+## Pendiente real
 
-- [x] Rutas `POST /auth/register|login|refresh` + logout con revocación.
-- [x] Validación de borde, middleware Bearer con `TokenProvider.verify`, mapeo de errores tipados a HTTP en `GlobalHandleError`.
-- [x] Raíz de composición DI (`core/di/container.ts`) con adapter Prisma + Bcrypt + JWT leyendo secrets del env.
-- [x] `GET /me` autorizado con `GetProfileUseCase`.
+### Requiere autorización del usuario
 
-### Pendiente real en gateway
+- [ ] **Swagger UI.** El spec ya existe y se sirve. Renderizarlo necesita
+      `swagger-ui-express`, que no es dependencia: no se agregó sin autorización.
+      Cuando se autorice, alcanza con montar la UI en `core/docs/docs.route.ts` y
+      cambiar `ui.enabled` a `true`. El discovery de `GET /api/docs` ya lo dice.
+- [ ] **Reset de contraseña** y **login con Google**. La UI los muestra
+      deshabilitados con `title="Coming soon"`, que es honesto: no hay backend.
+      `RESEND_KEY`, `CLIENT_GOOGLE_ID` y `CLIENT_GOOGLE_SECRET` están declarados
+      en `config/env/index.ts` y **no los usa nadie**. O se implementan o se
+      borran; dejarlos es ruido que promete una capacidad que no existe.
+- [ ] **Caché remoto de Turbo** (requiere token).
 
-- [ ] **`assign` / `update` de usuarios.** Requieren RBAC de admin. No se construyeron a propósito; falta la decisión de permisos.
-- [ ] Rate limit en login. Sigue abierto.
-- [ ] Logs sin PII. Sigue abierto.
-- [ ] Refresh token: el DTO lo devuelve en el body. El template del usuario usa cookies HttpOnly. La decisión de transporte quedó sin tomar.
-- [ ] Setup de Swagger, `helmet`.
+### Decisiones de producto, no técnicas
 
-## Deuda técnica conocida
+- [ ] **Cookies de sesión anónimas / consent de tracking.** La web tiene un
+      checkbox "Remember for 30 days" que hoy no controla nada: el `maxAge` de la
+      cookie de refresh es una constante del servidor. O se conecta a la decisión
+      o se saca de la UI, porque un control que no hace nada es peor que no
+      tenerlo.
 
-- [ ] `apps/web` y `apps/api-gateway` corren con `--passWithNoTests`: reportan verde con cero tests. Quitar la flag cuando aterrice el primer test real de cada app.
-- [ ] El job de CI `check-types` solo ejecuta 1 task (solo `apps/web` define ese script). Agregar `check-types` a las tres librerías para que el nombre refleje el alcance real.
-- [ ] `pnpm lint` en CI: deliberadamente fuera de alcance hasta que la base de lint esté limpia.
-- [ ] Caché remoto de Turbo sin configurar (requiere token).
-- [ ] `docs/` y `AGENTS.md` se actualizan junto al código, no después. Este archivo es la prueba de que eso no estaba pasando.
+### Deuda técnica
+
+- [ ] **No hay access log.** No existe middleware de logging de requests, así
+      que no hay riesgo de filtrar PII por ese lado — pero tampoco hay traza de
+      requests en producción. Cuando se agregue, la regla es: método, ruta,
+      status y duración; **nunca** el body, el `Authorization` ni la query string
+      (esta última puede llevar datos de negocio).
+- [ ] **`pnpm lint` fuera de CI**, deliberadamente, hasta que la base de lint
+      esté limpia.
+- [ ] **Caché de Turbo sin `outputs` para `apps/web`** (`turbo.json` conserva
+      `.next/**` de la plantilla original, que este repo no usa).
