@@ -24,6 +24,7 @@ export * from './application/use-cases/RefreshTokenUseCase.js';
 export * from './application/use-cases/LogoutUseCase.js';
 export * from './application/use-cases/GetProfileUseCase.js';
 export * from './application/use-cases/RegisterUserUseCase.js';
+export * from './application/use-cases/ChangeUserRolesUseCase.js';
 export * from './domain/value-objects/Email.js';
 export * from './domain/value-objects/Password.js';
 export * from './domain/value-objects/Role.js';

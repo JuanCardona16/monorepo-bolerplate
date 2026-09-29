@@ -200,7 +200,11 @@ describe("POST /api/v1/auth/login", () => {
     expect(body).toEqual({ success: true, data: { accessToken: "access-token" } });
     expect(setCookie).toContain(`${REFRESH_COOKIE}=raw-refresh-token`);
     expect(setCookie).toContain("HttpOnly");
-    expect(setCookie).toContain("SameSite=Strict");
+    // `lax`, not `strict`. Strict never sends the cookie on a cross-site
+    // request, which breaks the refresh flow as soon as the API is not
+    // same-site with the web app. Lax still blocks the cross-site POSTs that
+    // CSRF depends on. Configurable via REFRESH_COOKIE_SAME_SITE.
+    expect(setCookie).toContain("SameSite=Lax");
   });
 
   it("never returns the refresh token in the body", async () => {

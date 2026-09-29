@@ -1,5 +1,6 @@
 import {
   AuthRepository,
+  ChangeUserRolesUseCase,
   GetProfileUseCase,
   IdGenerator,
   LoginUseCase,
@@ -50,6 +51,7 @@ export interface AuthContainer {
   refreshUseCase: RefreshTokenUseCase;
   logoutUseCase: LogoutUseCase;
   getProfileUseCase: GetProfileUseCase;
+  changeUserRolesUseCase: ChangeUserRolesUseCase;
   authController: AuthController;
   close: () => Promise<void>;
 }
@@ -83,12 +85,17 @@ export function createContainer(overrides: ContainerOverrides = {}): AuthContain
   );
   const logoutUseCase = new LogoutUseCase(refreshTokenRepository);
   const getProfileUseCase = new GetProfileUseCase(authRepository);
+  const changeUserRolesUseCase = new ChangeUserRolesUseCase(
+    authRepository,
+    refreshTokenRepository,
+  );
   const authController = new AuthController(
     loginUseCase,
     registerUseCase,
     refreshUseCase,
     logoutUseCase,
     getProfileUseCase,
+    changeUserRolesUseCase,
   );
 
   return {
@@ -99,6 +106,7 @@ export function createContainer(overrides: ContainerOverrides = {}): AuthContain
     refreshUseCase,
     logoutUseCase,
     getProfileUseCase,
+    changeUserRolesUseCase,
     authController,
     close: () => prisma.$disconnect(),
   };

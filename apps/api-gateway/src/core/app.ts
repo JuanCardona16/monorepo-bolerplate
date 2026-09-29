@@ -1,14 +1,26 @@
 import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
+import { TRUST_PROXY_HOPS } from "../config/env/index.js";
 import { CorsConfig } from "../config/index.js";
 import { ApiPrefix } from "../constants/index.js";
+import { DocsPrefix } from "../constants/docs.js";
 import { GlobalHandleError } from "./errors/index.js";
 import { limiter } from "./middleware/rateLimit/limiter.js";
 import { handleNotFound, routerApplication } from "./routes/index.js";
+import routerDocs from "./docs/docs.route.js";
 
 // Crear una instancia de la aplicación Express
 const application: Express = express();
+
+// Rate limiting keys on the client IP. Behind a reverse proxy every request
+// otherwise arrives with the proxy's address and the global 200/15min budget is
+// shared by all users, so one busy minute locks everyone out. The hop count is
+// configuration, not a constant, because trusting more proxies than actually
+// sit in front would let a client forge `X-Forwarded-For` and skip the limit.
+if (TRUST_PROXY_HOPS > 0) {
+  application.set("trust proxy", TRUST_PROXY_HOPS);
+}
 
 application.use(helmet());
 application.use(CorsConfig());
@@ -18,6 +30,10 @@ application.use(cookieParser());
 application.use(limiter);
 
 // Rutas
+// The docs router is a sibling of the business API, not a child: everything
+// under `/api/v1` answers with the API response envelope, and the raw OpenAPI
+// document does not.
+application.use(DocsPrefix, routerDocs);
 application.use(ApiPrefix, routerApplication);
 
 // Ruta no encontrada
