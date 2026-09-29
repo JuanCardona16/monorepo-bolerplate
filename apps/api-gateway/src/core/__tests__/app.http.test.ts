@@ -293,6 +293,23 @@ describe("POST /api/v1/auth/refresh", () => {
     expect(status).toBe(401);
     expect(body.error?.code).toBe("INVALID_REFRESH_TOKEN");
   });
+
+  it("clears the refresh cookie when the refresh is rejected", async () => {
+    // A rejected refresh means the cookie is dead: revoked, expired, or
+    // replayed. Left in the browser, the client resends it on every page load
+    // and fails every time, so the app can never recover on its own.
+    container.refreshUseCase.execute.mockRejectedValue(new InvalidRefreshTokenError());
+
+    const response = await fetch(`${server.baseUrl}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { Cookie: `${REFRESH_COOKIE}=revoked-token` },
+    });
+
+    const setCookie = response.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`${REFRESH_COOKIE}=;`);
+    // Express clears cookies with an epoch `expires`, not `max-age=0`.
+    expect(setCookie.toLowerCase()).toMatch(/expires=thu, 01 jan 1970/);
+  });
 });
 
 describe("POST /api/v1/auth/logout", () => {
@@ -404,6 +421,34 @@ describe("routing", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it("reports a malformed JSON body as VALIDATION_ERROR, not INTERNAL_ERROR", async () => {
+    // `body-parser` throws a SyntaxError with no `code`, so this used to fall
+    // through to INTERNAL_ERROR / 500 and be treated as a server fault.
+    const response = await fetch(`${server.baseUrl}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{not json",
+    });
+
+    const body = (await response.json()) as { error?: { code?: string; message?: string } };
+    expect(response.status).toBe(400);
+    expect(body.error?.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("does not leak the body parser internals to the client", async () => {
+    // The raw message ("Expected property name or '}' in JSON at position 1")
+    // describes our JSON parser, not the caller's mistake.
+    const response = await fetch(`${server.baseUrl}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{not json",
+    });
+
+    const raw = await response.text();
+    expect(raw).not.toMatch(/position \d+/);
+    expect(raw).not.toMatch(/JSON at position/i);
   });
 
   it("discloses no framework fingerprint header", async () => {

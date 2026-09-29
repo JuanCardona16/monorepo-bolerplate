@@ -61,11 +61,20 @@ export class AuthController {
     if (!raw) {
       return next(new HttpError(401, "UNAUTHORIZED", "Not authorized."));
     }
-    const result = await this.refreshUseCase.execute({ refreshToken: raw });
-    res
-      .cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions)
-      .status(200)
-      .json({ success: true, data: { accessToken: result.accessToken } });
+    try {
+      const result = await this.refreshUseCase.execute({ refreshToken: raw });
+      res
+        .cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions)
+        .status(200)
+        .json({ success: true, data: { accessToken: result.accessToken } });
+    } catch (error) {
+      // A rejected refresh means the cookie is dead: expired, revoked, or
+      // replayed. Leaving it in the browser means the client retries it on
+      // every page load and fails every time. Clear it so the next visit
+      // starts clean instead of replaying a token the server already rejected.
+      res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH });
+      throw error;
+    }
   }
 
   async logout(req: Request, res: Response, _next: NextFunction) {
