@@ -103,10 +103,3 @@ function parseSameSite(
   }
   return raw;
 }
-
-// Optional until their features land (validated lazily at point of use)
-export const RESEND_KEY = process.env.RESEND_KEY;
-
-// Google enviroments
-export const CLIENT_GOOGLE_ID = process.env.CLIENT_GOOGLE_ID;
-export const CLIENT_GOOGLE_SECRET = process.env.CLIENT_GOOGLE_SECRET;

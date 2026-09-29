@@ -15,7 +15,7 @@ refresh con rotación y revocación, logout, perfil, gestión de roles, spec
 OpenAPI, y las dos bases (Neon, que usa la app, y Postgres local, que usan los
 tests de integración) migradas y verificadas.
 
-**535 tests**, verdes en los tres checks requeridos de `main`.
+**537 tests**, verdes en los tres checks requeridos de `main`.
 
 ## Paquetes (lógica de negocio) — completo
 
@@ -54,18 +54,26 @@ tests de integración) migradas y verificadas.
       cambiar `ui.enabled` a `true`. El discovery de `GET /api/docs` ya lo dice.
 - [ ] **Reset de contraseña** y **login con Google**. La UI los muestra
       deshabilitados con `title="Coming soon"`, que es honesto: no hay backend.
-      `RESEND_KEY`, `CLIENT_GOOGLE_ID` y `CLIENT_GOOGLE_SECRET` están declarados
-      en `config/env/index.ts` y **no los usa nadie**. O se implementan o se
-      borran; dejarlos es ruido que promete una capacidad que no existe.
+      `RESEND_KEY`, `CLIENT_GOOGLE_ID` y `CLIENT_GOOGLE_SECRET` se eliminaron por
+      estar declarados, ausentes de todo `.env.local` y sin un solo consumidor
+      (D-017). Re-agregar cuando las features existan.
 - [ ] **Caché remoto de Turbo** (requiere token).
 
 ### Decisiones de producto, no técnicas
 
-- [ ] **Cookies de sesión anónimas / consent de tracking.** La web tiene un
-      checkbox "Remember for 30 days" que hoy no controla nada: el `maxAge` de la
-      cookie de refresh es una constante del servidor. O se conecta a la decisión
-      o se saca de la UI, porque un control que no hace nada es peor que no
-      tenerlo.
+- [ ] **"Recordarme" real.** La web ya no ofrece el control: la duración la
+      decide el servidor (`REFRESH_COOKIE_MAX_AGE_MS`) y el cliente no puede
+      cambiarla (D-018). Si se quiere de verdad, el cliente tiene que decirle a
+      la API cuánto debe vivir la cookie de refresh, y eso es una postura de
+      seguridad de sesión, no un detalle de UI.
+
+- [ ] **Un fallo de red no muestra ningún feedback.** El test
+      `LoginPage > shows no error message when the request fails at the network
+      level` lo documenta sin arreglarlo: si el `fetch` rechaza (sin internet,
+      DNS caído, CORS), la página no renderiza alerta porque solo mira
+      `error instanceof ApiError`, y el usuario queda frente a un botón que volvió
+      a su estado normal sin ninguna explicación. Es el bug de UX más visible que
+      queda.
 
 ### Deuda técnica
 
