@@ -56,22 +56,33 @@ describe("router configuration", () => {
   it("mounts every application route under a single layout", () => {
     const paths = collectPaths(router.routes as Parameters<typeof collectPaths>[0]);
 
-    expect(paths.sort()).toEqual(["/", "/login", "/register"]);
+    // `collectPaths` joins each child with its parent, so the catch-all reads
+    // as `/*` rather than the bare `*` declared in the config.
+    expect(paths.sort()).toEqual(["/", "/*", "/login", "/register"]);
   });
 
   it("nests the routes inside the layout element", () => {
     const root = router.routes[0];
 
     expect(root?.element).toBeDefined();
-    expect(root?.children).toHaveLength(3);
+    expect(root?.children).toHaveLength(4);
   });
 
-  it("registers no wildcard or catch-all route", () => {
-    const paths = collectPaths(router.routes as Parameters<typeof collectPaths>[0]);
+  it("registers a wildcard route as the last child so it cannot shadow a real path", () => {
+    // Added because an unknown URL used to render a blank screen: the router had
+    // no catch-all at all. It has to stay last in the children array, otherwise
+    // React Router matches it first and every path falls through to 404.
+    const root = router.routes[0];
+    const children = (root?.children ?? []) as { path?: string }[];
+    const last = children[children.length - 1];
 
-    for (const path of paths) {
-      expect(path).not.toBe("*");
-    }
+    expect(last?.path).toBe("*");
+  });
+
+  it("has an errorElement on the root route", () => {
+    // Without it, a render-time throw showed React Router's bare unstyled
+    // default boundary, with no navigation and no way back.
+    expect(router.routes[0]?.errorElement).toBeDefined();
   });
 });
 
