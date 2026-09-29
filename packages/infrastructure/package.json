@@ -19,7 +19,8 @@
     "build:js": "tsup",
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
-    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+    "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
+    "test": "vitest run --passWithNoTests"
   },
   "keywords": [],
   "author": "",
@@ -30,7 +31,8 @@
     "@types/node": "^26.5.1",
     "@types/pg": "^8.23.1",
     "prisma": "7.10.0",
-    "tsx": "^4.23.13"
+    "tsx": "^4.23.13",
+    "vitest": "4.1.10"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

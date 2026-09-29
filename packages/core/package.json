@@ -19,7 +19,8 @@
     "build:js": "tsup",
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
-    "dev": "tsup --watch --onSuccess \"pnpm run build:types\""
+    "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +28,7 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.5.1",
-    "@repo/typescript-config": "workspace:*"
+    "@repo/typescript-config": "workspace:*",
+    "vitest": "4.1.10"
   }
 }
