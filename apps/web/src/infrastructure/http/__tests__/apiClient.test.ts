@@ -67,6 +67,76 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * A `fetch` that never got a response.
+ *
+ * Every page renders `mutation.error instanceof ApiError`, so a raw TypeError
+ * escaping the client meant the UI showed nothing at all — the button reset to
+ * idle and the user had no idea why. These tests pin the normalization that
+ * makes the pages' existing error branch actually reachable.
+ */
+describe("network failures", () => {
+  it("rejects with an ApiError rather than the raw TypeError", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const error = await api.get("/api/v1/auth/me").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+  });
+
+  it("reports a distinguishable code and a zero status", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const error = (await api.get("/api/v1/auth/me").catch((e: unknown) => e)) as ApiError;
+
+    expect(error.code).toBe("NETWORK_ERROR");
+    // 0 is the conventional "no HTTP response at all" sentinel, distinct from
+    // any status a server could have sent.
+    expect(error.status).toBe(0);
+  });
+
+  it("carries a message the user can act on", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const error = (await api.get("/api/v1/auth/me").catch((e: unknown) => e)) as ApiError;
+
+    expect(error.message).toMatch(/could not reach the server/i);
+  });
+
+  it("normalizes a DOMException rejection too, not only a TypeError", async () => {
+    // CORS rejections and TLS failures arrive as different error types
+    // depending on the browser. Normalizing only TypeError would leave a
+    // whole class of real failures invisible.
+    fetchMock.mockRejectedValue(new DOMException("Failed to fetch", "NetworkError"));
+
+    const error = await api.post("/api/v1/auth/login", {}).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+  });
+
+  it("leaves an abort alone instead of calling it a connection problem", async () => {
+    // An abort is a deliberate cancellation. Telling the user to check their
+    // connection would be a lie, and it would also make cancellation
+    // indistinguishable from failure for anything that retries.
+    fetchMock.mockRejectedValue(new DOMException("aborted", "AbortError"));
+
+    const error = await api.get("/api/v1/auth/me").catch((e: unknown) => e);
+
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect((error as DOMException).name).toBe("AbortError");
+  });
+
+  it("normalizes the failure of a POST as well as a GET", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const error = await api.post("/api/v1/auth/login", { email: "a@b.co" }).catch(
+      (e: unknown) => e,
+    );
+
+    expect(error).toBeInstanceOf(ApiError);
+  });
+});
+
 describe("api.get", () => {
   it("requests the given path and unwraps data from the success envelope", async () => {
     fetchMock.mockResolvedValue(stubResponse(200, { success: true, data: { uuid: "u1" } }));
@@ -265,12 +335,15 @@ describe("401 handling", () => {
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
-  it("surfaces a network failure as a raw TypeError, not an ApiError", async () => {
+  // This used to assert the raw TypeError escaped, pinning the behaviour that
+  // made the pages' `instanceof ApiError` branch unreachable on a dropped
+  // connection. Network failures are now normalized; see "network failures".
+  it("normalizes a network failure raised while handling a 401 flow", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
     const error = await api.get(ApiPaths.ME).catch((e: unknown) => e);
 
-    expect(error).toBeInstanceOf(TypeError);
-    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).not.toBeInstanceOf(TypeError);
   });
 });

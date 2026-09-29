@@ -179,10 +179,12 @@ describe("LoginPage submission", () => {
     expect(screen.getByRole("button", { name: "Log In" })).toBeEnabled();
   });
 
-  // A network failure is not an ApiError, and the page only renders the alert
-  // for ApiError. The user therefore gets no feedback at all. Reported, not
-  // fixed: the fix belongs in production code, not here.
-  it("shows no error message when the request fails at the network level", async () => {
+  // This used to assert the ABSENCE of an alert, documenting the bug: a rejected
+  // `fetch` is a TypeError, never an ApiError, so the page's
+  // `instanceof ApiError` branch rendered nothing and the user got no feedback
+  // at all. `apiClient` now normalizes the rejection into an ApiError, so the
+  // page can tell them what happened.
+  it("explains a network-level failure instead of rendering nothing", async () => {
     const user = userEvent.setup();
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
     renderLogin();
@@ -191,7 +193,21 @@ describe("LoginPage submission", () => {
     await user.type(screen.getByLabelText("Password"), "Secret123");
     await user.click(screen.getByRole("button", { name: "Log In" }));
 
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/could not reach the server/i);
     await waitFor(() => expect(screen.getByRole("button", { name: "Log In" })).toBeEnabled());
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the user on the form after a network failure", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "Secret123");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    await screen.findByRole("alert");
+    expect(screen.getByRole("heading", { name: "Welcome back!" })).toBeInTheDocument();
   });
 });
