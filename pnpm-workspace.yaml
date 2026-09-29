@@ -1,3 +1,10 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm >= 11 removed onlyBuiltDependencies; allowBuilds is the replacement.
+# Without this, install exits non-zero with ERR_PNPM_IGNORED_BUILDS because
+# strictDepBuilds defaults to true. Both packages are native/postinstall based.
+allowBuilds:
+  "@prisma/engines": true
+  bcrypt: true
