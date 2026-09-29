@@ -9,7 +9,7 @@
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
     "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
