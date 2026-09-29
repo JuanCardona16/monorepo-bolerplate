@@ -194,8 +194,33 @@ describe("createAuthorize", () => {
       expect(calls).toEqual([undefined]);
     });
 
-    it("reads the second whitespace separated segment regardless of the scheme", async () => {
-      // Documents current behaviour: the scheme is not checked for being "Bearer".
+    // Regression: the middleware used to do `header.split(" ")[1]` and ignore the
+    // scheme, so `Authorization: Basic <jwt>` authenticated exactly like `Bearer`.
+    it.each(["Basic", "Negotiate", "Digest", "bearerx", "Token"])(
+      "rejects the %s scheme even with a verifiable token",
+      async (scheme) => {
+        const verify = vi.fn(() => Promise.resolve(PAYLOAD));
+        const provider = tokenProvider(verify);
+        const app: Express = express();
+        app.get("/private", createAuthorize(provider), (_req, res) => {
+          res.status(200).json({ success: true });
+        });
+        const server = await startServer(app);
+
+        try {
+          const response = await fetch(`${server.baseUrl}/private`, {
+            headers: { Authorization: `${scheme} good-token` },
+          });
+
+          expect(response.status).toBe(401);
+          expect(verify).not.toHaveBeenCalled();
+        } finally {
+          await server.close();
+        }
+      },
+    );
+
+    it("accepts the scheme in any casing, per RFC 7235", async () => {
       const verify = vi.fn(() => Promise.resolve(PAYLOAD));
       const provider = tokenProvider(verify);
       const app: Express = express();
@@ -205,12 +230,13 @@ describe("createAuthorize", () => {
       const server = await startServer(app);
 
       try {
-        const response = await fetch(`${server.baseUrl}/private`, {
-          headers: { Authorization: "Basic good-token" },
-        });
+        for (const scheme of ["Bearer", "bearer", "BEARER", "BeArEr"]) {
+          const response = await fetch(`${server.baseUrl}/private`, {
+            headers: { Authorization: `${scheme} good-token` },
+          });
 
-        expect(response.status).toBe(200);
-        expect(verify).toHaveBeenCalledWith("good-token");
+          expect(response.status).toBe(200);
+        }
       } finally {
         await server.close();
       }

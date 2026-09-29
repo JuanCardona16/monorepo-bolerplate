@@ -1,0 +1,16 @@
+{
+  // Type-checks the test suite without emitting anything.
+  //
+  // `tsconfig.json` excludes `src/**/__tests__/**` so the compiled tests never
+  // reach `dist/`. The side effect is that `build:types` would not type-check the
+  // tests at all. This config closes that hole.
+  //
+  // `noEmit` keeps the check side-effect free.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
