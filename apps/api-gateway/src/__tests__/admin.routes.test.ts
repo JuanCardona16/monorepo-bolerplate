@@ -9,17 +9,30 @@ import { startServer, type RunningServer } from "./helpers/startServer.js";
  * anonymous is 401 (and must not learn the route exists), an authenticated
  * non-admin is 403, and an admin is 200. A guard that answers 403 to an
  * anonymous caller leaks the route's existence.
+ *
+ * `vi.hoisted` is the only place the env can be set early enough: the env module
+ * runs `required()` while it is imported, and a plain statement at the top of a
+ * test file executes *after* the imports. Without this, the suite only passed
+ * locally because a developer `.env.local` happened to define the variables.
  */
-const h = vi.hoisted(() => ({
-  changeUserRolesUseCase: {
-    execute: vi.fn(async (input: { targetUserUuid: string; roles: string[] }) => ({
-      uuid: input.targetUserUuid,
-      email: "target@example.com",
-      roles: new Set(input.roles),
-    })),
-  },
-  verify: vi.fn(),
-}));
+const hoisted = vi.hoisted(() => {
+  process.env.NODE_ENV = "test";
+  process.env.TOKEN_SECRET_KEY = "test-only-token-secret";
+  process.env.REFRESH_TOKEN_SECRET_KEY = "test-only-refresh-secret";
+  process.env.DATABASE_URL = "postgresql://unused:unused@127.0.0.1:5432/unused";
+
+  return {
+    changeUserRolesUseCase: {
+      execute: vi.fn(async (input: { targetUserUuid: string; roles: string[] }) => ({
+        uuid: input.targetUserUuid,
+        email: "target@example.com",
+        roles: new Set(input.roles),
+      })),
+    },
+  };
+});
+
+const h = hoisted;
 
 vi.mock("../core/di/container.js", async () => {
   const actual =
@@ -44,9 +57,9 @@ const authController = new AuthController(
   notFound as never,
   notFound as never,
   notFound as never,
-  h.changeUserRolesUseCase as never,
+  hoisted.changeUserRolesUseCase as never,
 );
-const deps = { changeUserRolesUseCase: h.changeUserRolesUseCase };
+const deps = { changeUserRolesUseCase: hoisted.changeUserRolesUseCase };
 
 const ROLES_URL = "/api/v1/auth/users/target-uuid/roles";
 
@@ -55,9 +68,6 @@ describe("PUT /api/v1/auth/users/:uuid/roles", () => {
   let application: unknown;
 
   beforeAll(async () => {
-    vi.stubEnv("DATABASE_URL", "postgresql://unused:unused@127.0.0.1:5432/unused");
-    vi.stubEnv("TOKEN_SECRET_KEY", SECRET);
-    vi.stubEnv("REFRESH_TOKEN_SECRET_KEY", SECRET);
     const mod = await import("../core/app.js");
     application = mod.default;
     server = await startServer(application as never);
@@ -65,12 +75,10 @@ describe("PUT /api/v1/auth/users/:uuid/roles", () => {
 
   afterAll(async () => {
     await server.close();
-    vi.unstubAllEnvs();
   });
 
   beforeEach(() => {
-    h.changeUserRolesUseCase.execute.mockClear();
-    h.verify.mockClear();
+    hoisted.changeUserRolesUseCase.execute.mockClear();
   });
 
   async function callAs(roles: string[] | null): Promise<Response> {
