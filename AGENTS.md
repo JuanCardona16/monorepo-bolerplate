@@ -36,11 +36,13 @@ Library packages (`core`, `security`, `infrastructure`) each define:
 
 ## Verification
 
-- **Vitest 4.1.10** is the test runner. `pnpm test` = `turbo run test` (8 tasks, green as of 2026-09-29). Domain coverage lives in `packages/core/src/authentication/domain/__tests__/` (87 tests).
+- **Vitest 4.1.10** is the test runner. `pnpm test` = `turbo run test` (8 tasks, green as of 2026-09-29). `@repo/core` has **138 tests**: the domain (`authentication/domain/__tests__/`) and all 5 use cases (`authentication/application/use-cases/__tests__/`), which use `vi.fn()` fakes for the ports — no database, no test libraries.
+- `noUncheckedIndexedAccess` is on, so `const [first] = arr` does not typecheck. Use `arr[0]` with optional access in tests.
 - **`.github/workflows/ci.yml` exists** — three parallel jobs (`build`, `check-types`, `test`), no `needs` between them, `concurrency` cancels superseded runs. All three are **required status checks on `main`** (verified green, run `36524305417`).
 - `main` is protected: required checks, `strict: true`, `enforce_admins: true`, **0 approving reviews** (solo developer), force-push and deletion blocked. Push straight to `main` is rejected — go through a PR.
 - Closest to a standalone typecheck: `pnpm --filter <pkg> build:types` (`tsc` with `declaration: true`). Root `check-types` runs **only 1 task** because only `apps/web` defines that script; library type errors are still caught by `pnpm build`, which runs `build:types`. The CI job name overstates its scope — see `odd/tasks/ci-workflow.md`.
-- `apps/web` and `apps/api-gateway` run Vitest with `--passWithNoTests`, so an empty suite reports green. The flag must go once the first real test lands in each app.
+- `apps/web`, `apps/api-gateway`, `@repo/security` and `@repo/infrastructure` still run Vitest with `--passWithNoTests`, so an empty suite reports green. The flag must go once the first real test lands in each one. Do not remove it before writing those tests: CI goes red immediately.
+- `packages/core/tsconfig.json` has no `include`, so tsc globs every `.ts`. `src/**/__tests__/**` is in `exclude` to keep compiled tests and their `.d.ts` out of the published `dist/`.
 - `@repo/infrastructure` has a `postinstall` hook that generates the Prisma client, so CI has no manual generate step. It depends on the `allowBuilds` entries above; without them the hook itself would be blocked.
 - Full local gate: `pnpm install --frozen-lockfile` → `pnpm build` → `pnpm test`.
 
