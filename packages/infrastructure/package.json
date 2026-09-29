@@ -26,6 +26,7 @@
     "prisma:migrate:dev": "prisma migrate dev --schema ./src/persistence/postgresSql/prisma/schema.prisma",
     "prisma:migrate:deploy": "prisma migrate deploy --schema ./src/persistence/postgresSql/prisma/schema.prisma",
     "prisma:migrate:status": "prisma migrate status --schema ./src/persistence/postgresSql/prisma/schema.prisma",
+    "prisma:promote-admin": "tsx src/persistence/postgresSql/scripts/promoteAdmin.ts",
     "postinstall": "pnpm run prisma:generate"
   },
   "keywords": [],
