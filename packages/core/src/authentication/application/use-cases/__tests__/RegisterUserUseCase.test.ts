@@ -117,6 +117,25 @@ describe("RegisterUserUseCase", () => {
       expect(saved?.uuid).toBe(GENERATED_UUID);
     });
 
+    it("stores the email in its normalized form", async () => {
+      const deps = makeDeps();
+
+      await useCase(deps).execute({ ...validInput, email: "  User@Example.COM  " });
+
+      const saved = deps.authRepository.saved[0];
+      expect(saved?.email).toBe("user@example.com");
+    });
+
+    it("checks for an existing user with the normalized email", async () => {
+      const deps = makeDeps();
+
+      await useCase(deps).execute({ ...validInput, email: "USER@EXAMPLE.COM" });
+
+      // Both the lookup and the insert have to use the same canonical spelling,
+      // otherwise the uniqueness check runs against a value that was never stored.
+      expect(deps.authRepository.findByEmail).toHaveBeenCalledWith("user@example.com");
+    });
+
     it("never returns the password or the hash in the output", async () => {
       const result = await useCase(makeDeps()).execute(validInput);
 
