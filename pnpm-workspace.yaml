@@ -4,7 +4,12 @@ packages:
 
 # pnpm >= 11 removed onlyBuiltDependencies; allowBuilds is the replacement.
 # Without this, install exits non-zero with ERR_PNPM_IGNORED_BUILDS because
-# strictDepBuilds defaults to true. Both packages are native/postinstall based.
+# strictDepBuilds defaults to true. All of these are native/postinstall based:
+# esbuild downloads its platform binary, prisma and @prisma/engines run
+# codegen setup, bcrypt compiles through node-gyp.
+# Matched by name, so this covers every resolved version of each package.
 allowBuilds:
   "@prisma/engines": true
   bcrypt: true
+  esbuild: true
+  prisma: true
