@@ -19,8 +19,13 @@ export const createAuthorize =
       if (!header) {
         return next(new HttpError(401, "UNAUTHORIZED", "Not authorized."));
       }
-      const token = header.split(" ")[1];
-      if (!token) {
+      const [scheme, token] = header.split(" ");
+      // RFC 7235: the auth-scheme has to be checked, not just skipped over.
+      // Splitting and taking index 1 meant `Authorization: Basic <jwt>` and
+      // `Negotiate <jwt>` authenticated exactly like `Bearer <jwt>`. No
+      // privilege escalation (the token still has to verify), but the scheme
+      // was never actually enforced. The scheme is case-insensitive.
+      if (scheme?.toLowerCase() !== "bearer" || !token) {
         return next(new HttpError(401, "UNAUTHORIZED", "Not authorized."));
       }
       const payload = await tokenProvider.verify(token);
