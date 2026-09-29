@@ -1,0 +1,181 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createElement } from "react";
+
+import { renderWithProviders } from "../../../../test/renderWithProviders.js";
+import { LoginPage } from "../LoginPage.js";
+
+function stubResponse(status: number, body?: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as unknown as Response;
+}
+
+let fetchMock: ReturnType<typeof vi.fn>;
+
+function renderLogin() {
+  return renderWithProviders(createElement(LoginPage));
+}
+
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("LoginPage rendering", () => {
+  it("renders the heading and the form fields with accessible labels", () => {
+    renderLogin();
+
+    expect(screen.getByRole("heading", { name: "Welcome back!" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+  });
+
+  it("links to the register page", () => {
+    renderLogin();
+
+    expect(screen.getByRole("link", { name: "Sign Up" })).toHaveAttribute("href", "/register");
+  });
+
+  it("disables the Google sign-in button as not yet available", () => {
+    renderLogin();
+
+    const google = screen.getByRole("button", { name: /log in with google/i });
+    expect(google).toBeDisabled();
+    expect(google).toHaveAttribute("title", "Coming soon");
+  });
+
+  it("does not call the API before the form is submitted", () => {
+    renderLogin();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("LoginPage validation", () => {
+  it("shows both required errors and makes no request on empty submit", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    expect(await screen.findByText("Email is required.")).toBeInTheDocument();
+    expect(screen.getByText("Password is required.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not use native browser validation, since the form sets noValidate", () => {
+    renderLogin();
+
+    expect(screen.getByRole("button", { name: "Log In" }).closest("form")).toHaveAttribute(
+      "novalidate",
+    );
+  });
+});
+
+describe("LoginPage submission", () => {
+  it("posts the typed credentials to the login endpoint", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      stubResponse(200, { success: true, data: { accessToken: "token-1" } }),
+    );
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "Secret123");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/v1/auth/login");
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe(JSON.stringify({ email: "user@test.co", password: "Secret123" }));
+  });
+
+  it("disables the submit button and shows the pending label while in flight", async () => {
+    const user = userEvent.setup();
+    let resolveFetch: ((value: Response) => void) | undefined;
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "Secret123");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    const pending = await screen.findByRole("button", { name: "Signing in…" });
+    expect(pending).toBeDisabled();
+    expect(pending).toHaveAttribute("aria-busy", "true");
+
+    resolveFetch?.(stubResponse(200, { success: true, data: { accessToken: "t" } }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  });
+
+  it("surfaces the gateway error message and keeps the user on the form", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      stubResponse(401, {
+        success: false,
+        error: {
+          message: "Invalid credentials.",
+          code: "INVALID_CREDENTIALS",
+          status: 401,
+          timestamp: "2026-09-29T10:00:00.000Z",
+        },
+      }),
+    );
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "wrongpass");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((a) => a.textContent === "Invalid credentials.")).toBe(true);
+    expect(screen.getByRole("heading", { name: "Welcome back!" })).toBeInTheDocument();
+  });
+
+  it("re-enables the submit button after a failed attempt", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      stubResponse(400, {
+        success: false,
+        error: { message: "Invalid email.", code: "INVALID_EMAIL", status: 400 },
+      }),
+    );
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "nope");
+    await user.type(screen.getByLabelText("Password"), "Secret123");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    expect(await screen.findByText("Invalid email.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log In" })).toBeEnabled();
+  });
+
+  // A network failure is not an ApiError, and the page only renders the alert
+  // for ApiError. The user therefore gets no feedback at all. Reported, not
+  // fixed: the fix belongs in production code, not here.
+  it("shows no error message when the request fails at the network level", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "Secret123");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Log In" })).toBeEnabled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});

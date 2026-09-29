@@ -21,6 +21,7 @@ export default defineConfig({
     name: "web",
     environment: "jsdom",
     globals: false,
+    setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
 });
