@@ -214,6 +214,68 @@ toma `(where, data)`— y las 5 afirmaciones dieron `undefined` en silencio.
 Además faltaba `vi.clearAllMocks()` en el `beforeEach`, que hacía fallar el
 `not.toHaveBeenCalled()` por llamadas de tests anteriores.
 
+---
+
+## D-015 — El access log registra lo mínimo, y la IP no
+
+**Decisión.** `createRequestLogger` emite una línea por request en formato Common
+Log Format: método, ruta, status, duración. **Nunca** el body, **nunca** el
+header `Authorization`, **nunca** el query string. La IP se registra solo con
+`ACCESS_LOG_IPS=true`, y el default es `false`.
+
+**Por qué.** Un log que persiste una contraseña es un almacén de credenciales, y
+eso no se puede arreglar después. El query string es igual de traicionero:
+`?token=`, `?email=`, `?code=` son comunes, y además los query strings terminan en
+los access logs de todos los proxies delante de la app. La IP es dato personal
+bajo GDPR, y un access log es exactamente el tipo de almacén que la acumula para
+siempre sin que nadie lo decida.
+
+**Detalle de diseño.** El middleware usa `req.path` y **nunca**
+`req.originalUrl`. No es una preferencia: usar `originalUrl` haría que la
+garantía dependa de que nadie escriba la palabra equivocada en el futuro, y una
+refactorización podría reintroducir la fuga sin que ningún test lo note.
+
+Se monta **primero** en `app.ts`. Después de `helmet` o del rate limiter
+perdería los 429; después de las rutas perdería los 404. Y un request rechazado
+es justo el que querés ver.
+
+Escucha `res.on("close")` además de `finish`: un cliente que se desconecta a
+medio request nunca emite `finish`, y esos requests abortados son exactamente
+los que dicen algo — son un endpoint lento o una red inestable vista desde el
+servidor. El guard `logged` evita el doble conteo cuando disparan ambos.
+
+Un `try/catch` alrededor de la escritura: perder una línea de log es
+estrictamente mejor que convertir cada request en un 500.
+
+**Aprendido.** Los 12 tests unitarios usan objetos falsos, y eso los hace
+**incapaces** de detectar el bug más grave de la implementación (ver D-016). Un
+test que controla su propio input no puede sorprender a la implementación.
+
+---
+
+## D-016 — Express reescribe `req.url` dentro de un router montado
+
+**Decisión.** `requestLogger` captura `method`, `path` e `ip` **de inmediato**,
+al entrar, y no cuando la respuesta termina.
+
+**Por qué.** Express le saca el path de montaje a `req.url` mientras despacha
+dentro de un router montado, y lo restaura después. Como el evento `finish` se
+dispara antes de esa restauración, leer `req.path` en ese momento da
+`"/login"` en vez de `"/api/v1/auth/login"`.
+
+**Aprendido.** Los 12 tests unitarios pasaban. El bug apareció recién en el test
+de integración contra el HTTP real, y lo que se veía en el log era
+`- "POST /login" 200 1.3ms -`. Un log lleno de paths relativos al router es
+mucho más difícil de usar, y peor: un refactor que mueva una ruta reescribe
+silenciosamente todas las líneas históricas.
+
+**La lección general.** Un test con objetos falsos no puede sorprender a la
+implementación. Los 12 tests unitarios afirmaban el formato de la línea, la
+ausencia de PII, el conteo único, el `try/catch`. Todos pasaban mientras la
+línea era inútil. Y la mutación precisa —volver a leer `req.path` al loguear— la
+detectan 1 test unitario y 5 de integración: los tests escritos **contra el
+comportamiento real** son los que la cazan.
+
 
 
 **Decisión.** `@testing-library/*` y cualquier otra dependencia nueva se piden
