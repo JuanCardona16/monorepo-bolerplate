@@ -1,11 +1,12 @@
 import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
-import { TRUST_PROXY_HOPS } from "../config/env/index.js";
+import { ACCESS_LOG_IPS, TRUST_PROXY_HOPS } from "../config/env/index.js";
 import { CorsConfig } from "../config/index.js";
 import { ApiPrefix } from "../constants/index.js";
 import { DocsPrefix } from "../constants/docs.js";
 import { GlobalHandleError } from "./errors/index.js";
+import { createRequestLogger } from "./middleware/logger/requestLogger.js";
 import { limiter } from "./middleware/rateLimit/limiter.js";
 import { handleNotFound, routerApplication } from "./routes/index.js";
 import routerDocs from "./docs/docs.route.js";
@@ -21,6 +22,12 @@ const application: Express = express();
 if (TRUST_PROXY_HOPS > 0) {
   application.set("trust proxy", TRUST_PROXY_HOPS);
 }
+
+// The access log is mounted first, before anything that can answer or reject.
+// Mounted after `helmet` or the rate limiter it would miss 429s, and mounted
+// after the routes it would miss 404s — and a rejected request is exactly the
+// one you want to see.
+application.use(createRequestLogger({ includeIp: ACCESS_LOG_IPS }));
 
 application.use(helmet());
 application.use(CorsConfig());

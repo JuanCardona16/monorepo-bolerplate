@@ -34,6 +34,16 @@ export const BCRYPT_ROUNDS = parsePositiveInt("BCRYPT_ROUNDS", "10");
 export const TRUST_PROXY_HOPS = parseNonNegativeInt("TRUST_PROXY_HOPS", "0");
 
 /**
+ * Whether the access log records the client IP.
+ *
+ * Off by default. An IP address is personal data under GDPR, and an access log
+ * is exactly the kind of store that quietly accumulates it forever. Turn it on
+ * only where you need it for abuse analysis, and own the retention story that
+ * comes with it.
+ */
+export const ACCESS_LOG_IPS = process.env.ACCESS_LOG_IPS === "true";
+
+/**
  * `SameSite` for the refresh cookie.
  *
  * `strict` never sends the cookie on any cross-site request, which breaks the

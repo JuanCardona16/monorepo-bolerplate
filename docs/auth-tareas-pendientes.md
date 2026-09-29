@@ -15,7 +15,7 @@ refresh con rotación y revocación, logout, perfil, gestión de roles, spec
 OpenAPI, y las dos bases (Neon, que usa la app, y Postgres local, que usan los
 tests de integración) migradas y verificadas.
 
-**515 tests**, verdes en los tres checks requeridos de `main`.
+**535 tests**, verdes en los tres checks requeridos de `main`.
 
 ## Paquetes (lógica de negocio) — completo
 
@@ -40,6 +40,9 @@ tests de integración) migradas y verificadas.
       `REFRESH_COOKIE_SECURE` (D-003, D-004).
 - [x] Bootstrap del primer admin: `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>` (D-012).
 - [x] Spec OpenAPI en `GET /api/docs/openapi.json`, montado como hermano de `/api/v1`.
+- [x] Access log: una línea por request (método, ruta, status, duración), sin body,
+      sin `Authorization`, sin query string, y con la IP solo bajo
+      `ACCESS_LOG_IPS=true` (D-015, D-016).
 
 ## Pendiente real
 
@@ -66,11 +69,6 @@ tests de integración) migradas y verificadas.
 
 ### Deuda técnica
 
-- [ ] **No hay access log.** No existe middleware de logging de requests, así
-      que no hay riesgo de filtrar PII por ese lado — pero tampoco hay traza de
-      requests en producción. Cuando se agregue, la regla es: método, ruta,
-      status y duración; **nunca** el body, el `Authorization` ni la query string
-      (esta última puede llevar datos de negocio).
 - [ ] **`pnpm lint` fuera de CI**, deliberadamente, hasta que la base de lint
       esté limpia.
 - [ ] **Caché de Turbo sin `outputs` para `apps/web`** (`turbo.json` conserva
