@@ -322,6 +322,47 @@ UI.
 **Aprendido.** El test afirma la **ausencia** del checkbox a propósito. Volver a
 ponERlo es una regresión, no una feature, y el nombre. Verificado por mutación: reintroducir el checkbox rompe 2 tests.
 
+---
+
+## D-019 — Un `fetch` que rechaza se normaliza en el cliente, no en cada página
+
+**Decisión.** `apiClient.request` envuelve el `fetch` en un `try/catch` y
+convierte un rechazo crudo en `new ApiError("NETWORK_ERROR", 0, mensaje)`.
+
+**Por qué.** Todas las páginas renderizan su error con
+`mutation.error instanceof ApiError`. Un `fetch` que rechaza (sin internet, DNS
+caído, TLS, CORS) lanza un `TypeError`, que **nunca** es un `ApiError`: la
+condición daba `false`, la página no renderizaba nada, y el usuario se quedaba
+frente a un botón que volvio a su estado normal sin explicación.
+
+El fix va en el cliente y no en las páginas por una razón concreta: el defecto
+está en la frontera, no en la vista. Arreglarlo en cada página serían N cambios
+y ninguno sería la raíz. `RegisterPage` tenía exactamente el mismo bug y quedó
+arreglado sin tocarlo.
+
+`status: 0` es el centinela convencional de "no hubo respuesta HTTP", distinto de
+cualquier status que el servidor pudiera haber enviado.
+
+**El `AbortError` se deja pasar sin tocar**, a propósito: una cancelación es
+deliberada, no un fallo. Convertirla en "revisá tu conexión" sería una mentira,
+y además haría que la cancelación fuera indistinguible del fallo para cualquier
+cosa que reintente.
+
+**Aprendido.** Dos tests fijaban el comportamiento **equivocado**, y
+documentarlo fue lo que hizo el bug visible:
+
+- `LoginPage > shows no error message when the request fails at the network
+  level` afirmaba la **ausencia** de alerta, con un comentario que decía
+  explícitamente *"Reported, not fixed: the fix belongs in production code"*.
+- `apiClient > surfaces a network failure as a raw TypeError, not an ApiError`
+  **fijaba el bug como si fuera el contrato**.
+
+Un test que documenta un bug sin marcarlo comoKnown-broken es una bomba de
+reloj: el dia que se arregla, el test falla y parece que rompiste algo, cuando
+lo unico que paso es que el codigo mejoro. Ambos tienen ahora el nombre
+descriptivo de lo que **debería** pasar, y una referencia a por que antes no
+pasaba.
+
 
 
 **Decisión.** `@testing-library/*` y cualquier otra dependencia nueva se piden

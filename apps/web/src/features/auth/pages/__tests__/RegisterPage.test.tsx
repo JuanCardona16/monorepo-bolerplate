@@ -159,3 +159,25 @@ describe("RegisterPage submission", () => {
     expect(await screen.findByText("Password is too weak.")).toBeInTheDocument();
   });
 });
+
+/**
+ * This page had the same blind spot as the login page: it renders its error only
+ * for `instanceof ApiError`, so before `apiClient` normalized a rejected `fetch`
+ * a dropped connection produced no feedback here either. Kept as a separate
+ * suite because "the client normalizes" is not the same claim as "this page
+ * actually shows it".
+ */
+describe("RegisterPage network failure", () => {
+  it("explains a network-level failure instead of rendering nothing", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderWithProviders(createElement(RegisterPage));
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "Str0ngPassw0rd");
+    await user.click(screen.getByRole("button", { name: "Sign Up" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/could not reach the server/i);
+  });
+});

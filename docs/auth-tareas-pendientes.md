@@ -15,7 +15,7 @@ refresh con rotación y revocación, logout, perfil, gestión de roles, spec
 OpenAPI, y las dos bases (Neon, que usa la app, y Postgres local, que usan los
 tests de integración) migradas y verificadas.
 
-**537 tests**, verdes en los tres checks requeridos de `main`.
+**546 tests**, verdes en los tres checks requeridos de `main`.
 
 ## Paquetes (lógica de negocio) — completo
 
@@ -43,6 +43,9 @@ tests de integración) migradas y verificadas.
 - [x] Access log: una línea por request (método, ruta, status, duración), sin body,
       sin `Authorization`, sin query string, y con la IP solo bajo
       `ACCESS_LOG_IPS=true` (D-015, D-016).
+- [x] Feedback ante fallo de red: `apiClient` normaliza un `fetch` rechazado en un
+      `ApiError`, así que login y register le dicen al usuario qué pasó en vez de
+      no renderizar nada (D-019).
 
 ## Pendiente real
 
@@ -66,14 +69,6 @@ tests de integración) migradas y verificadas.
       cambiarla (D-018). Si se quiere de verdad, el cliente tiene que decirle a
       la API cuánto debe vivir la cookie de refresh, y eso es una postura de
       seguridad de sesión, no un detalle de UI.
-
-- [ ] **Un fallo de red no muestra ningún feedback.** El test
-      `LoginPage > shows no error message when the request fails at the network
-      level` lo documenta sin arreglarlo: si el `fetch` rechaza (sin internet,
-      DNS caído, CORS), la página no renderiza alerta porque solo mira
-      `error instanceof ApiError`, y el usuario queda frente a un botón que volvió
-      a su estado normal sin ninguna explicación. Es el bug de UX más visible que
-      queda.
 
 ### Deuda técnica
 
