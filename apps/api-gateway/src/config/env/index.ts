@@ -44,6 +44,29 @@ export const TRUST_PROXY_HOPS = parseNonNegativeInt("TRUST_PROXY_HOPS", "0");
 export const ACCESS_LOG_IPS = process.env.ACCESS_LOG_IPS === "true";
 
 /**
+ * Whether the OpenAPI spec and the Swagger UI are served.
+ *
+ * Defaults to ON in development and OFF in production. Swagger UI is a complete,
+ * browsable inventory of every endpoint, every schema and every error code: on a
+ * public deployment that is reconnaissance handed over for free. The raw spec
+ * follows the same flag, because a JSON document describing the whole surface is
+ * just as useful to an attacker as the rendered one.
+ */
+export const DOCS_ENABLED =
+  process.env.DOCS_ENABLED === "true" ||
+  (process.env.DOCS_ENABLED === undefined && process.env.NODE_ENV !== "production");
+
+/**
+ * The `servers` entry Swagger UI's "Try it out" will call.
+ *
+ * Defaults to "/", correct when the web app and the API share an origin or the
+ * browser is pointed at the gateway directly. Set it to the public API URL when
+ * the client is served from somewhere else, otherwise "Try it out" resolves
+ * relative to the docs page and every call fails with a CORS error.
+ */
+export const OPENAPI_SERVER_URL = process.env.OPENAPI_SERVER_URL || "/";
+
+/**
  * `SameSite` for the refresh cookie.
  *
  * `strict` never sends the cookie on any cross-site request, which breaks the
