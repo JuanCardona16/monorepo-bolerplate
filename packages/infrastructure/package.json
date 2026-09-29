@@ -19,6 +19,7 @@
     "build:js": "tsup",
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
+    "check-types": "tsc --noEmit -p tsconfig.test.json",
     "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
     "test": "vitest run",
     "prisma:generate": "prisma generate --schema ./src/persistence/postgresSql/prisma/schema.prisma",
