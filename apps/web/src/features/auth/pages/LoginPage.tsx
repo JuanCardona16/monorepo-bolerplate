@@ -78,14 +78,20 @@ export function LoginPage() {
             error={errors.password?.message}
           />
           <div className="mb-6 flex items-center justify-between text-sm">
-            <label className="flex cursor-pointer items-center gap-2 text-ink">
-              <input
-                type="checkbox"
-                defaultChecked
-                className="h-4 w-4 accent-ink"
-              />
-              Remember for 30 days
-            </label>
+            {/*
+              This used to be a checkbox. It had no `name`, no `onChange` and was
+              not registered with the form, so it submitted nothing: the refresh
+              cookie's lifetime is decided entirely by the server
+              (`REFRESH_COOKIE_MAX_AGE_MS`). Rendering a control that cannot be
+              changed is worse than not offering the choice at all — a user who
+              unticks it gets the same session and believes they chose something.
+
+              If a real "remember me" is wanted, it needs a server-side decision
+              first: the client would have to tell the API how long the refresh
+              cookie should live, which is a session-security posture and not a
+              UI detail.
+            */}
+            <p className="text-muted">You&rsquo;ll stay signed in for 30 days.</p>
             <span className="cursor-not-allowed text-muted" title="Coming soon">
               Forgot password?
             </span>

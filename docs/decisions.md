@@ -276,6 +276,52 @@ línea era inútil. Y la mutación precisa —volver a leer `req.path` al loguea
 detectan 1 test unitario y 5 de integración: los tests escritos **contra el
 comportamiento real** son los que la cazan.
 
+---
+
+## D-017 — Se borra la config que no usa nadie
+
+**Decisión.** Eliminados `RESEND_KEY`, `CLIENT_GOOGLE_ID` y
+`CLIENT_GOOGLE_SECRET` de `config/env/index.ts` y del barrel de `config/index.ts`.
+
+**Por qué.** Estaban declarados, **no aparecen en ningún `.env.local`** (ni en el
+de la gateway ni en el de la raíz) y **no tenían un solo consumidor** en todo el
+repo. El comentario que los acompañaba —"Optional until their features land"— los
+delataba: eran sobras de la plantilla del usuario.
+
+Declarar una variable de entorno que nadie lee es una promesa que el código no
+cumple. Un lector razonable asume que el reset de contraseña y el login con Google
+están cableados, y los descubre rotos recién cuando los necesita.
+
+La UI, en cambio, sí era honesta: los botones deshabilitados con
+`title="Coming soon"` no prometen nada. El deshonesto era el env.
+
+**Aprendido.** Antes de borrar, `grep` en **todo** el repo, no en el paquete donde
+están declarados. Un `Select-String` sobre `apps/api-gateway/src` habría dado la
+misma respuesta de todos modos, pero con el repo entero no queda duda.
+
+---
+
+## D-018 — Un control que no controla nada se quita, no se arregla
+
+**Decisión.** El checkbox "Remember for 30 days" del login pasó a ser texto
+estático: *"You'll stay signed in for 30 days."*
+
+**Por qué.** No tenía `name`, ni `onChange`, ni estaba registrado en el form con
+react-hook-form. No enviaba nada. La duración la decide el servidor
+(`REFRESH_COOKIE_MAX_AGE_MS`), así que **desmarcarlo no podía cambiar nada**:
+el usuario desmarcaba, obtenía la misma sesión, y creía haber elegido algo.
+
+El defecto no era la falta de funcionalidad sino **presentar como elección lo que
+no es elección**. Un texto estático dice la verdad sin ofrecer un control falso.
+
+**No se "arregló" conectándolo**, porque hacerlo es una decisión de producto que
+todavía no se tomó: el cliente tendría que decirle a la API cuánto debe vivir la
+cookie de refresh, y eso es una postura de seguridad de sesión, no un detalle de
+UI.
+
+**Aprendido.** El test afirma la **ausencia** del checkbox a propósito. Volver a
+ponERlo es una regresión, no una feature, y el nombre. Verificado por mutación: reintroducir el checkbox rompe 2 tests.
+
 
 
 **Decisión.** `@testing-library/*` y cualquier otra dependencia nueva se piden

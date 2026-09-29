@@ -52,6 +52,22 @@ describe("LoginPage rendering", () => {
     expect(google).toHaveAttribute("title", "Coming soon");
   });
 
+  // The session duration is decided by the server (`REFRESH_COOKIE_MAX_AGE_MS`).
+  // A checkbox for it could never have changed anything, so offering one told
+  // the user they had a choice they did not have. This asserts the absence on
+  // purpose: putting the checkbox back is a regression, not a feature.
+  it("offers no session-length control, because the client cannot change it", () => {
+    renderLogin();
+
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("states the session length instead of pretending it is optional", () => {
+    renderLogin();
+
+    expect(screen.getByText(/stay signed in for 30 days/i)).toBeInTheDocument();
+  });
+
   it("does not call the API before the form is submitted", () => {
     renderLogin();
 
