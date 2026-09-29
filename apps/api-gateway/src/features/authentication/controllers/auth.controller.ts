@@ -1,10 +1,12 @@
 import {
   ChangeUserRolesUseCase,
+  ConfirmPasswordResetUseCase,
   GetProfileUseCase,
   LoginUseCase,
   LogoutUseCase,
   RefreshTokenUseCase,
   RegisterUserUseCase,
+  RequestPasswordResetUseCase,
 } from "@repo/core/authentication";
 import { NextFunction, Request, Response } from "express";
 import {
@@ -38,6 +40,8 @@ export class AuthController {
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getProfileUseCase: GetProfileUseCase,
     private readonly changeUserRolesUseCase: ChangeUserRolesUseCase,
+    private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
+    private readonly confirmPasswordResetUseCase: ConfirmPasswordResetUseCase,
   ) {
     this.register = this.register.bind(this);
     this.login = this.login.bind(this);
@@ -45,6 +49,8 @@ export class AuthController {
     this.logout = this.logout.bind(this);
     this.me = this.me.bind(this);
     this.changeUserRoles = this.changeUserRoles.bind(this);
+    this.forgotPassword = this.forgotPassword.bind(this);
+    this.resetPassword = this.resetPassword.bind(this);
   }
 
   async register(req: Request, res: Response, _next: NextFunction) {
@@ -93,6 +99,35 @@ export class AuthController {
       await this.logoutUseCase.execute(user.uuid);
     }
     res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH }).status(204).send();
+  }
+
+  /**
+   * Always the same status and the same body, whether or not the account
+   * exists.
+   *
+   * The message is written as "if an account exists" rather than "we sent you
+   * an email", because the second one is a lie for every unregistered address
+   * and a confirmation for every registered one. A caller that learns whether
+   * an address has an account can enumerate the whole user table, so the
+   * response cannot vary for any reason. The copy deliberately does not promise
+   * an email either: the honest version of "no leaks" is refusing to say.
+   */
+  async forgotPassword(req: Request, res: Response, _next: NextFunction) {
+    await this.requestPasswordResetUseCase.execute({ email: req.body.email });
+    res.status(202).json({
+      success: true,
+      data: {
+        message: "If an account exists for that address, a password reset link is on its way.",
+      },
+    });
+  }
+
+  async resetPassword(req: Request, res: Response, _next: NextFunction) {
+    const result = await this.confirmPasswordResetUseCase.execute({
+      token: req.body.token,
+      password: req.body.password,
+    });
+    res.status(200).json({ success: true, data: result });
   }
 
   async me(req: Request, res: Response, _next: NextFunction) {

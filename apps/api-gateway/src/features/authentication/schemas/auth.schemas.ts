@@ -19,3 +19,20 @@ export const loginSchema = z.object({
 export const changeRolesSchema = z.object({
   roles: z.array(z.string().min(1)).max(50),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+/**
+ * The strength rules live in the domain (`Password`), not here.
+ *
+ * Duplicating them in Zod would create a second definition that can drift, and
+ * the day it drifts the gateway would answer 400 for a password the domain
+ * accepts, or worse, accept one the domain rejects. `min(1)` only rejects an
+ * empty body field, which is a shape problem rather than a policy one.
+ */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(1),
+});

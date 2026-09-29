@@ -13,6 +13,10 @@
     "./persistence/postgresSql": {
       "types": "./dist/persistence/postgresSql/index.d.ts",
       "default": "./dist/persistence/postgresSql/index.js"
+    },
+    "./email": {
+      "types": "./dist/email/index.d.ts",
+      "default": "./dist/email/index.js"
     }
   },
   "scripts": {

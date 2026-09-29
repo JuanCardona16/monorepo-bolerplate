@@ -24,6 +24,27 @@ process.env.TOKEN_SECRET_KEY = "test-only-token-secret";
 process.env.REFRESH_TOKEN_SECRET_KEY = "test-only-refresh-secret";
 process.env.DATABASE_URL = "postgresql://unused:unused@127.0.0.1:5432/unused";
 
-// Non-production defaults, so a suite never depends on a developer's shell.
-process.env.DOCS_ENABLED = "true";
-delete process.env.ACCESS_LOG_IPS;
+/**
+ * `DOCS_ENABLED` is deliberately left UNSET.
+ *
+ * Setting it to "true" here was a mistake that cost real coverage: with the
+ * value pinned, no suite in the package ever exercised the
+ * `DOCS_ENABLED === undefined && NODE_ENV !== "production"` branch, which is
+ * the *default* the env var documents. The branch that matters to a developer
+ * running locally is the one with nothing set.
+ */
+
+/**
+ * Set, never deleted.
+ *
+ * `delete` is exactly backwards here. `dotenv` does not override a variable that
+ * is already in `process.env` (verified against dotenv 18.0.4), so deleting the
+ * value does not "unset" it for the process: it *frees the name*, and
+ * `config/env/index.ts` then runs `dotenv.config()` and re-injects
+ * `ACCESS_LOG_IPS=true` from `.env.local`. With a value present, dotenv leaves
+ * it alone and the test default actually holds.
+ *
+ * The same reasoning applies to every line above: they are assignments precisely
+ * so that a developer's `.env.local` cannot override them.
+ */
+process.env.ACCESS_LOG_IPS = "false";

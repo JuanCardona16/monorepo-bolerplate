@@ -92,9 +92,9 @@ export function LoginPage() {
               UI detail.
             */}
             <p className="text-muted">You&rsquo;ll stay signed in for 30 days.</p>
-            <span className="cursor-not-allowed text-muted" title="Coming soon">
+            <Link to={AppRoutes.FORGOT_PASSWORD} className="font-semibold text-ink">
               Forgot password?
-            </span>
+            </Link>
           </div>
           <button
             type="submit"

@@ -3,10 +3,20 @@ import { AdminRoutes, PrivateRoutes, PublicRoutes } from "../../../constants/ind
 import { asyncHandler } from "../../../core/errors/index.js";
 import { createAuthorize } from "../../../core/middleware/auth/authorize.js";
 import { requireRole } from "../../../core/middleware/auth/requireRole.js";
-import { loginLimiter } from "../../../core/middleware/rateLimit/limiter.js";
+import {
+  forgotPasswordLimiter,
+  loginLimiter,
+  resetPasswordLimiter,
+} from "../../../core/middleware/rateLimit/limiter.js";
 import { validateWithZod } from "../../../core/middleware/validate/validateWithZod.js";
 import { getContainer } from "../../../core/di/container.js";
-import { changeRolesSchema, loginSchema, registerSchema } from "../schemas/auth.schemas.js";
+import {
+  changeRolesSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "../schemas/auth.schemas.js";
 
 const authenticationPaths: Router = Router();
 const { authController, tokenProvider } = getContainer();
@@ -27,6 +37,26 @@ authenticationPaths.post(
 );
 
 authenticationPaths.post(PublicRoutes.REFRESH, asyncHandler(authController.refresh));
+
+// Both reset routes are public, obviously: the whole point is to reach them
+// without a session, the one thing the person using them has lost.
+//
+// The limiter runs BEFORE the schema, on purpose. A validation failure still
+// costs the caller nothing, and validating first would let an attacker probe
+// the endpoint for free while only real payloads get counted.
+authenticationPaths.post(
+  PublicRoutes.FORGOT_PASSWORD,
+  forgotPasswordLimiter,
+  validateWithZod(forgotPasswordSchema, "body"),
+  asyncHandler(authController.forgotPassword),
+);
+
+authenticationPaths.post(
+  PublicRoutes.RESET_PASSWORD,
+  resetPasswordLimiter,
+  validateWithZod(resetPasswordSchema, "body"),
+  asyncHandler(authController.resetPassword),
+);
 
 authenticationPaths.post(
   PublicRoutes.LOGOUT,

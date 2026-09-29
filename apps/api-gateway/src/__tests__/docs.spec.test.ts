@@ -14,8 +14,12 @@ import { startServer, type RunningServer } from "./helpers/startServer.js";
  * matters here is the mount path and the payload, both of which are fully
  * determined by the router plus the prefix constant.
  *
- * `DOCS_ENABLED` is unset here, so it defaults to enabled (NODE_ENV is "test",
- * which is not "production"). The disabled case needs its own file: the router
+ * `DOCS_ENABLED` is deliberately left UNSET here, so this suite exercises the
+ * documented default: documentation is ON outside production. `setupEnv.ts` used
+ * to pin it to "true", which silently removed the `undefined` branch from the
+ * repo's coverage while this very comment still claimed it was covered.
+ *
+ * The disabled case needs its own file: the router
  * reads the flag once, at import time, and a module cannot be re-imported with a
  * different environment in the same process.
  */
@@ -88,6 +92,15 @@ describe("openapi documentation endpoint", () => {
   it("sits outside the versioned business prefix", () => {
     expect(DocsPrefix.startsWith("/api/v1")).toBe(false);
   });
+
+  // The default is a documented contract, not an implementation detail: a
+  // developer with a fresh clone and no `.env.local` must still get the docs.
+  // Asserting it explicitly keeps the value from being "covered" only by
+  // accident, the way it was when the setup file pinned it to "true".
+  it("leaves DOCS_ENABLED unset so the suite pins the default, not a value", () => {
+    expect(process.env.DOCS_ENABLED).toBeUndefined();
+    expect(process.env.NODE_ENV).toBe("test");
+  });
 });
 
 describe("openapi document", () => {
@@ -114,6 +127,43 @@ describe("openapi document", () => {
       expect.arrayContaining(["registerUser", "loginUser", "refreshAccessToken", "logoutUser"]),
     );
     expect(openApiDocument.paths["/api/v1/auth/me"]?.get?.operationId).toBe("getCurrentProfile");
+  });
+
+  it("documents both password reset operations as public", () => {
+    // A reset route documented as requiring a bearer token would be unusable
+    // for the only people who need it: they have no access token.
+    expect(openApiDocument.paths["/api/v1/auth/forgot-password"]?.post?.operationId).toBe(
+      "requestPasswordReset",
+    );
+    expect(openApiDocument.paths["/api/v1/auth/reset-password"]?.post?.operationId).toBe(
+      "confirmPasswordReset",
+    );
+
+    for (const path of ["/api/v1/auth/forgot-password", "/api/v1/auth/reset-password"]) {
+      expect(openApiDocument.paths[path]?.post?.security).toEqual([]);
+    }
+  });
+
+  it("documents the silent 202 and the reset failure codes", () => {
+    // The 202 is the contract that makes `forgot` safe: one response, whatever
+    // the address was. If it ever became a 200 with a per-case body, the
+    // enumeration guarantee would be gone and nothing would say so.
+    expect(operationCodes("/api/v1/auth/forgot-password", "post")).toEqual(
+      expect.arrayContaining(["202", "400", "429"]),
+    );
+    expect(operationCodes("/api/v1/auth/reset-password", "post")).toEqual(
+      expect.arrayContaining(["200", "400", "401", "429"]),
+    );
+  });
+
+  it("does not document a 429 only, forgetting the real outcomes", () => {
+    // Cheap guard against a path entry that documents the limiter and nothing
+    // else, which is what a route added in a hurry tends to look like.
+    const forgot = operationCodes("/api/v1/auth/forgot-password", "post");
+    const reset = operationCodes("/api/v1/auth/reset-password", "post");
+
+    expect(forgot.length).toBeGreaterThan(2);
+    expect(reset.length).toBeGreaterThan(2);
   });
 
   it("documents the error codes the gateway can actually return", () => {

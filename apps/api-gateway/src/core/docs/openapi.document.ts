@@ -21,6 +21,8 @@ const jsonContent = (schema: OpenApiSchema) => ({
 
 const registerPath = `${authBase}${PublicRoutes.REGISTER}`;
 const loginPath = `${authBase}${PublicRoutes.LOGIN}`;
+const forgotPasswordPath = `${authBase}${PublicRoutes.FORGOT_PASSWORD}`;
+const resetPasswordPath = `${authBase}${PublicRoutes.RESET_PASSWORD}`;
 const refreshPath = `${authBase}${PublicRoutes.REFRESH}`;
 const logoutPath = `${authBase}${PublicRoutes.LOGOUT}`;
 const mePath = `${authBase}${PrivateRoutes.ME}`;
@@ -168,6 +170,54 @@ const paths: Record<string, OpenApiPathItem> = {
     },
   },
 
+  [forgotPasswordPath]: {
+    post: {
+      operationId: "requestPasswordReset",
+      summary: "Ask for a password reset link.",
+      description:
+        "Always answers 202 with the same body, whether or not the address is registered. Revealing that difference would turn this route into an account enumeration oracle. The response is a 202 and not a 200: the work is queued behind a third-party email provider, and 202 says that honestly. A failed delivery is swallowed for the same reason, so the provider being down cannot be used to probe for accounts either.",
+      tags: ["Authentication"],
+      security: [],
+      requestBody: {
+        required: true,
+        content: jsonContent({ $ref: "#/components/schemas/ForgotPasswordRequest" }),
+      },
+      responses: {
+        "202": {
+          description:
+            "Accepted. Whether an email was actually sent is deliberately not disclosed.",
+          content: jsonContent({ $ref: "#/components/schemas/GenericMessageResponse" }),
+        },
+        "400": errorResponse("Malformed body or invalid email."),
+        "429": errorResponse("Too many reset requests from this address."),
+      },
+    },
+  },
+
+  [resetPasswordPath]: {
+    post: {
+      operationId: "confirmPasswordReset",
+      summary: "Set a new password with a reset token.",
+      description:
+        "The token is single use and expires after one hour. Confirming revokes every session of the account: refresh tokens are live sessions, so a reset that left them standing would lock the door while a stolen session kept the key. Consuming a token also burns any other outstanding one, so the oldest email in the inbox stops working. If the email provider fails on the previous call, the token stays valid and the user can simply ask again.",
+      tags: ["Authentication"],
+      security: [],
+      requestBody: {
+        required: true,
+        content: jsonContent({ $ref: "#/components/schemas/ResetPasswordRequest" }),
+      },
+      responses: {
+        "200": {
+          description: "Password changed and every session revoked.",
+          content: jsonContent({ $ref: "#/components/schemas/RegisterResponse" }),
+        },
+        "400": errorResponse("Malformed body or weak password."),
+        "401": errorResponse("Unknown, already used or expired reset token."),
+        "429": errorResponse("Too many attempts from this address."),
+      },
+    },
+  },
+
   [mePath]: {
     get: {
       operationId: "getCurrentProfile",
@@ -193,6 +243,44 @@ const schemas: Record<string, OpenApiSchema> = {
     properties: {
       email: { type: "string", format: "email", example: "user@example.com" },
       password: { type: "string", format: "password", minLength: 8 },
+    },
+  },
+  ForgotPasswordRequest: {
+    type: "object",
+    required: ["email"],
+    properties: {
+      email: { type: "string", format: "email", example: "user@example.com" },
+    },
+  },
+  ResetPasswordRequest: {
+    type: "object",
+    required: ["token", "password"],
+    properties: {
+      token: {
+        type: "string",
+        minLength: 1,
+        description:
+          "The raw token from the email link. Single use, expires after one hour. The strength rules are not duplicated here on purpose: they live in the domain.",
+      },
+      password: {
+        type: "string",
+        format: "password",
+        minLength: 1,
+        description:
+          "At least 8 characters with an uppercase letter, a lowercase letter and a number. Enforced by the domain, not by this schema.",
+      },
+    },
+  },
+  GenericMessageResponse: {
+    type: "object",
+    required: ["success", "data"],
+    properties: {
+      success: { type: "boolean", example: true },
+      data: {
+        type: "object",
+        required: ["message"],
+        properties: { message: { type: "string" } },
+      },
     },
   },
   ChangeRolesRequest: {
