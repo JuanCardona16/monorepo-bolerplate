@@ -42,11 +42,12 @@ Commands were run locally and observed, not assumed.
 Type errors in the libraries are not missed, because `pnpm build` runs `build:types` (`tsc`) and is covered by the `build` job. Nothing is unchecked; the job name just overstates its scope. Fixing it properly means adding `check-types` scripts to the three libraries.
 
 ## Follow-ups
-1. **Add a `postinstall` hook to `@repo/infrastructure`** running `prisma generate`. This is the better fix than repeating the step in every job: it also removes the manual `prisma generate` step that a fresh local clone currently requires. Deliberately out of scope here because it touches a package file rather than `.github/`.
-2. **Add `check-types` scripts to the 3 library packages** so the job name matches reality.
-3. **`lint` was left out on purpose.** `pnpm lint` only really runs for `apps/web` today, and adding a fourth job on day one risks a red CI from pre-existing lint findings. Add it once the baseline is clean.
+1. ~~**Add a `postinstall` hook to `@repo/infrastructure`**~~ — **hecho.** `@repo/infrastructure` ya tiene `"postinstall": "pnpm run prisma:generate"`, así que el paso explícito de `prisma generate` en cada job se eliminó: `pnpm install` lo cubre. Un clone nuevo no necesita paso manual.
+   Ojo con la trampa: el hook corre **solo en `install`**, nunca en `build`. Después de borrar `generated/`, un `pnpm install` normal **no** lo repone porque pnpm no reevalúa scripts con el árbol de dependencias igual — hay que usar `pnpm install --force`.
+2. ~~**Add `check-types` scripts to the 3 library packages**~~ — **hecho.** Cada biblioteca tiene un `tsconfig.test.json` con `noEmit: true` que type-checkea `src/**/*` incluyendo tests (porque `tsconfig.json` excluye `__tests__` del emit). La task raíz corre **7 tareas**: 4 typechecks + 3 builds de dependencias.
+3. **`lint` sigue fuera de CI, a propósito.** Es lo último que queda y no necesita nada del usuario. Ver *Estado 2026-10-01* abajo.
 4. **Turbo remote caching is not configured.** It would need a token and a scoped remote; the local cache already makes reruns cheap.
-5. **`apps/web` still reports green with zero tests** (`--passWithNoTests`). Once the first frontend test lands, remove the flag so an empty suite fails.
+5. ~~**`apps/web` still reports green with zero tests** (`--passWithNoTests`)~~ — **hecho.** Ningún paquete usa `--passWithNoTests` anymore. Una suite vacía es ahora un fallo de CI, no un verde falso. **No volver a agregar el flag.**
 
 ## Branch protection: applied 2026-09-29
 
@@ -89,4 +90,66 @@ The first fix (`@prisma/engines`, `bcrypt`) was correct but incomplete — the n
 - [x] First GitHub Actions run is green (run `36523645201`: build, check-types, test all `success`)
 - [x] Status checks marked as required on `main`
 - [x] PR #3 reaches `mergeStateStatus: CLEAN` with all three checks `SUCCESS`
+
+## Estado 2026-10-01 — el job `test` tiene base de datos
+
+Actualización posterior (PR #25, merge `5746c86`). Lo de arriba describe el
+workflow como se creó; esto es lo que quedó después de descubrir que **el `test`
+job era más débil de lo que su nombre decía**.
+
+**El problema.** Los 35 tests de integración de `@repo/infrastructure` se saltaban
+con `describe.skipIf(!process.env.DATABASE_URL)`. No era solo un problema de CI:
+la task `test` de `turbo.json` no declaraba la variable, Turbo la filtraba, y los
+tests se saltaban **siempre**, incluso local con la base andando. Un mapper o un
+repositorio roto llegaba a `main` con todo verde porque los tests que lo
+habrían detectado nunca corrían. El peor tipo de falso verde: no falla,
+**desaparece** (D-022).
+
+Invisible porque `pnpm --filter X exec vitest run` **sí** veía la variable. El
+comando de debuggear funcionaba y el del día a día no.
+
+**Lo que se hizo**, y por qué el container no era lo importante:
+
+1. `turbo.json`: `test` declara `env: ["DATABASE_URL"]` e `inputs: [".env*"]`.
+2. `.github/workflows/ci.yml`: service container `postgres:17-alpine` (pinned, no
+   `latest`: un bump mayor puede cambiar collation y poner en rojo un build por
+   motivos ajenos al código) + `prisma:migrate:deploy` **antes** de los tests.
+3. **El guard dejó de poder fallar en silencio.** Las tres suites ahora lanzan
+   cuando `CI=true` y no hay `DATABASE_URL`. La asimetría es deliberada: local
+   sin base = skip aceptable; CI sin base = error, porque ahí la ausencia de la
+   base ya no es un estado normal, es la señal de que algo se rompió.
+
+El punto 3 es el que importa. Meter el container sin cambiar el guard habría sido
+una mejora a medias: el mismo `describe.skip` habría seguido reportando 35 tests
+como skipped si el container no levantaba, y el build habría quedado verde.
+
+4. `turbo.json`: `test` con `cache: false`. Depende de una base viva y ninguna
+   clave de cache puede ver su contenido. Un `"98 passed"` reproducido es una
+   afirmación sobre una base que ya no existe. Va en `turbo.json` y no como
+   `TURBO_FORCE` en el workflow porque eso apagaría también el caché de `build`.
+
+5. **Bug de paso**: los tres scripts `prisma:migrate:*` estaban rotos —pasaban
+   `--schema` pero no `--config`. `prisma generate` sí funciona sin `--config`, así
+   que el `postinstall` nunca lo detectó, y el workflow solo corría `pnpm test`
+   (D-027).
+
+**Verificado en el runner real**, no solo en local. El log del run `36911512069`:
+
+```
+Applying migration `20260927174808_init_auth`
+Applying migration `20260929150000_email_normalization_index`
+Applying migration `20260930093000_password_reset_tokens`
+All migrations have been successfully applied.
+
+@repo/infrastructure   8 test files, 98 passed
+```
+
+Cero `skipped` en los cinco paquetes. **Leer el log, no el check verde:** los tres
+checks en `SUCCESS` no prueban que los tests hayan corrido; prueban que el job
+terminó.
+
+**Limitación de la simulación local**: `app_user` no tiene `CREATEDB`, así que no
+se puede crear una base vacía para replicar el service container. Se usó un
+**schema limpio** (`schema=ci_sim` sobre la misma URL), que para probar migraciones
+desde cero es equivalente. La prueba contra una base de verdad la dio GitHub.
 
