@@ -8,9 +8,24 @@ import { createAuthPrismaClient } from "../../client.js";
 import { PrismaPasswordResetTokenRepository } from "../PrismaPasswordResetTokenRepository.js";
 import type { PrismaClient } from "../../prisma/generated/prisma/client.js";
 
-// Real-database suite, gated on DATABASE_URL so CI reports it as skipped
-// instead of failing when there is no Postgres to talk to.
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
+// Real-database suite, gated on DATABASE_URL. Skipping is only acceptable
+// locally: in CI a missing DATABASE_URL means the service container or the env
+// wiring broke, and skipping would restore the false green of a repository that
+// never ran against a real database. Throw at collection time instead.
+const describeDb = (() => {
+  if (process.env.DATABASE_URL) {
+    return describe;
+  }
+  if (process.env.CI) {
+    throw new Error(
+      "DATABASE_URL is not set, but CI=true. The test job in .github/workflows/ci.yml " +
+        "provides a Postgres service container and sets this variable; if you are " +
+        "seeing this, the service did not start, the variable was filtered, or the " +
+        "gate was bypassed. Refusing to report these tests as skipped.",
+    );
+  }
+  return describe.skip;
+})();
 
 const FUTURE = new Date("2099-01-01T00:00:00.000Z");
 const SPENT_AT = new Date("2098-01-01T00:00:00.000Z");

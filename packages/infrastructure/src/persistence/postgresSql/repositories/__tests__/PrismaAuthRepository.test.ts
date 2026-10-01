@@ -8,11 +8,30 @@ import { createAuthPrismaClient } from "../../client.js";
 import { PrismaAuthRepository } from "../PrismaAuthRepository.js";
 import type { PrismaClient } from "../../prisma/generated/prisma/client.js";
 
-// These tests run against a real Postgres database that the application also
-// uses, so every suite is gated on DATABASE_URL. In CI (no database) the whole
-// suite reports as skipped instead of failing, which keeps the real-database
-// contract visible without turning a missing service into a red build.
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
+// These tests run against a real Postgres database, so the suite is gated on
+// DATABASE_URL. Skipping silently is only acceptable on a developer machine.
+//
+// The CI job now starts a Postgres service container and sets DATABASE_URL, so
+// "CI without a database" is no longer a normal state — it means the service
+// failed to come up, the env var was filtered, or the wiring regressed. Any of
+// those would restore the exact false green this gate was supposed to prevent:
+// a repository that does not work against a real database, passing CI because
+// its own tests never ran. So in CI a missing DATABASE_URL throws at collection
+// time, which fails the file loudly instead of reporting 35 skipped.
+const describeDb = (() => {
+  if (process.env.DATABASE_URL) {
+    return describe;
+  }
+  if (process.env.CI) {
+    throw new Error(
+      "DATABASE_URL is not set, but CI=true. The test job in .github/workflows/ci.yml " +
+        "provides a Postgres service container and sets this variable; if you are " +
+        "seeing this, the service did not start, the variable was filtered, or the " +
+        "gate was bypassed. Refusing to report these tests as skipped.",
+    );
+  }
+  return describe.skip;
+})();
 
 // A bcrypt-shaped but deliberately fake hash. The repository must persist the
 // value verbatim; hashing for real is the security package's job, not this one's.

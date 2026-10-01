@@ -15,9 +15,20 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      // `.env*` in the inputs: without it, a cached test result is reused after
-      // `.env.local` changes, so `pnpm test` can return a green built against an
-      // environment that no longer exists. `build` already declared it.
+      // Caching off for this task, and only this one.
+      //
+      // `test` now depends on a live database, and no cache key can see what is
+      // inside it: the applied migrations, rows a previous run left behind, a
+      // server that came up with a different schema. A replayed "98 passed" is a
+      // claim about a database that no longer exists — the same false green as
+      // skipping the suites, just harder to spot because nothing looks wrong.
+      //
+      // Scoped here rather than via TURBO_FORCE in the workflow, which would also
+      // disable the cache for `build` and throw away the expensive part. The
+      // suites take seconds; a full tsup + tsc build does not.
+      "cache": false,
+      // `.env*` in the inputs, kept for the non-database suites: without it a
+      // change to `.env.local` would not invalidate anything.
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       // Declared so Turbo both hashes it into the cache key and passes it
       // through to the task. Undeclared, `turbo run test` filtered it out and
