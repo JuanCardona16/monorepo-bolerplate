@@ -1,6 +1,6 @@
 # Auth — Tareas pendientes
 
-> Revisado el 2026-09-29 contra el árbol vigente (`main` @ `948ae8f`).
+> Revisado el 2026-10-01 contra el árbol vigente (`main` @ `5746c86`).
 > La parte HTTP vive en `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
 > Decisiones registradas con su motivo en [`decisions.md`](./decisions.md).
 >
@@ -11,11 +11,14 @@
 ## Estado
 
 La feature de autenticación está operativa de punta a punta: registro, login,
-refresh con rotación y revocación, logout, perfil, gestión de roles, spec
-OpenAPI, y las dos bases (Neon, que usa la app, y Postgres local, que usan los
-tests de integración) migradas y verificadas.
+refresh con rotación y revocación, logout, perfil, gestión de roles, **reset de
+contraseña**, spec OpenAPI con Swagger UI, y las dos bases (Neon, que usa la app, y
+Postgres local, que usan los tests de integración) migradas y verificadas.
 
-**553 tests**, verdes en los tres checks requeridos de `main`.
+**646 tests**, verdes en los tres checks requeridos de `main`, y **cero skipped en
+CI**: el job `test` levanta un `postgres:17-alpine` como service container, así que
+los 35 tests de integración de `@repo/infrastructure` se ejecutan de verdad y no
+pueden volver a reportarse como skipped sin romper el build (D-026).
 
 ## Paquetes (lógica de negocio) — completo
 
@@ -27,6 +30,9 @@ tests de integración) migradas y verificadas.
 - [x] `ChangeUserRolesUseCase`: reemplazo total del conjunto de roles + revocación
       de las sesiones del objetivo. Replace y no merge a propósito (D-005).
 - [x] Migraciones de Prisma aplicadas y verificadas en **ambas** bases.
+- [x] **Reset de contraseña**: `PasswordResetToken`, `RequestPasswordResetUseCase`,
+      `ConfirmPasswordResetUseCase`, puertos `PasswordResetTokenRepository` y
+      `EmailSender`, repositorio Prisma y adaptador de email (D-023, D-024, D-025).
 
 ## Api-gateway — completo
 
@@ -48,29 +54,68 @@ tests de integración) migradas y verificadas.
 - [x] Feedback ante fallo de red: `apiClient` normaliza un `fetch` rechazado en un
       `ApiError`, así que login y register le dicen al usuario qué pasó en vez de
       no renderizar nada (D-019).
+- [x] **Rutas de reset**: `POST /api/v1/auth/password/forgot|reset`, con rate limit
+      dedicado en cada una. `forgot` responde byte-idéntico exista o no la cuenta, y
+      el `catch` del sender no filtra por tipo: re-lanzar un error inesperado
+      respondería 500 para una cuenta real y 200 para una desconocida (D-024).
+
+## Web — completo
+
+- [x] `ForgotPasswordPage` y `ResetPasswordPage`, con `useForgotPassword` /
+      `useResetPassword`. El token se lee del **fragment** de la URL
+      (`#token=`), que los browsers nunca transmiten: no llega al access log, ni al
+      log de un proxy, ni al `Referer` de la página siguiente.
 
 ## Pendiente real
 
 ### Requiere autorización del usuario
 
-- [ ] **Reset de contraseña** y **login con Google**. La UI los muestra
-      deshabilitados con `title="Coming soon"`, que es honesto: no hay backend.
-      `RESEND_KEY`, `CLIENT_GOOGLE_ID` y `CLIENT_GOOGLE_SECRET` se eliminaron por
-      estar declarados, ausentes de todo `.env.local` y sin un solo consumidor
-      (D-017). Re-agregar cuando las features existan.
+- [ ] **Migración `20260930093000_password_reset_tokens` en Neon.** Está aplicada en
+      la base local de tests; **no** se tocó la base que usa la app, por criterio.
+      Sin esto, el reset de contraseña funciona en local y responde `P2021` en
+      producción.
+- [ ] **Variables de email en el entorno real**: `RESEND_API_KEY`, `EMAIL_FROM` y
+      `PASSWORD_RESET_URL`. Son opcionales a propósito —un `required()` impediría
+      que arranque el login porque a alguien se le olvidó una contraseña— pero
+      `PASSWORD_RESET_URL` cae a `http://localhost:5173/reset-password`, así que un
+      despliegue que la olvide entrega emails **válidos** con links muertos. El
+      módulo de config avisa por consola en producción (D-023).
+- [ ] **Login con Google.** La UI ya no lo ofrece. Requiere un proyecto de Google
+      Cloud del usuario. `CLIENT_GOOGLE_ID` y `CLIENT_GOOGLE_SECRET` se eliminaron
+      por estar declaradas, ausentes de todo `.env.local` y sin un consumidor
+      (D-017); re-agregar cuando la feature exista.
 - [ ] **Caché remoto de Turbo** (requiere token).
+- [ ] **Rotar el token de GitHub** que se usó durante el desarrollo.
 
 ### Decisiones de producto, no técnicas
 
 - [ ] **"Recordarme" real.** La web ya no ofrece el control: la duración la
       decide el servidor (`REFRESH_COOKIE_MAX_AGE_MS`) y el cliente no puede
-      cambiarla (D-018). Si se quiere de verdad, el cliente tiene que decirle a
-      la API cuánto debe vivir la cookie de refresh, y eso es una postura de
+      cambiarla (D-018). Si se quiere de verdad, el cliente tiene que decirle a la
+      API cuánto debe vivir la cookie de refresh, y eso es una postura de
       seguridad de sesión, no un detalle de UI.
 
 ### Deuda técnica
 
 - [ ] **`pnpm lint` fuera de CI**, deliberadamente, hasta que la base de lint
-      esté limpia.
+      esté limpia. Es la última tarea técnica que no necesita nada del usuario.
 - [ ] **Caché de Turbo sin `outputs` para `apps/web`** (`turbo.json` conserva
       `.next/**` de la plantilla original, que este repo no usa).
+- [ ] **`prisma.config.ts` es un caso latente de la misma clase que D-021**: corre
+      `dotenv.config()` al importarse y pasa `process.env.DATABASE_URL` sin
+      validar. Hoy ningún test lo importa, así que no falla, pero el día que uno lo
+      haga va a tener exactamente el modo de fallo del env en tiempo de import.
+
+## Historial de trampas pagadas
+
+Tres de estas trampas se pagaron más de una vez, y cada una está registrada con su
+causa raíz en `decisions.md` y en `AGENTS.md`:
+
+- **D-007** — un `__tests__` anidado no puede importar nada de afuera de sí mismo.
+- **D-013** — `vi.mock` necesita el mismo especificador que el módulo bajo prueba;
+  si no coincide, el mock no se aplica en silencio y la suite se conecta a una base real.
+- **D-021** — `config/env/index.ts` corre `required()` al importarse, antes de
+  cualquier `beforeAll`. Pasó tres veces hasta que se resolvió con un `setupFiles`
+  en vez de con otra nota.
+- **D-022 / D-026** — nada ejercitaba el camino: los 35 tests de integración no
+  corrían nunca, y `prisma:migrate:*` estaba roto sin que nadie lo notara.
