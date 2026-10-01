@@ -572,3 +572,67 @@ antes.
 **Por qué.** Cambia la superficie del repositorio de forma permanente. Durante este
 trabajo se agregaron 4 devDependencies para testear React, y se decidió contra
 `swagger-ui-express` justamente por esta regla, dejando el spec como JSON plano.
+
+---
+
+## D-026 — CI con base de datos: el service container y el guard que lo hace honesto
+
+**Decisión.** El job `test` de `ci.yml` levanta `postgres:17-alpine` como service
+container, aplica `prisma:migrate:deploy` antes de los tests, y las tres suites de
+repositorio **lanzan** en vez de saltarse cuando `CI=true` y no hay
+`DATABASE_URL`. La task `test` de `turbo.json` quedó con `cache: false`.
+
+**Por qué el guard.** Agregar la base al runner sin tocar el guard habría sido una
+mejora a medias. `process.env.DATABASE_URL ? describe : describe.skip` sigue siendo
+un skip silencioso: si el container no levanta, si la variable se filtra, o si
+alguien revierte el `env` de `turbo.json`, los 35 tests vuelven a reportarse como
+skipped y el build queda verde. El mismo falso verde, con mejor infraestructura
+alrededor.
+
+La asimetría es intencional: **local sin base = skip aceptable** (el desarrollador
+puede no tener Postgres), **CI sin base = error**. En CI la ausencia de la base ya
+no es un estado normal: es la señal de que algo se rompió.
+
+**Por qué `cache: false`.** La task depende de una base viva y ninguna clave de
+cache puede ver su contenido: el historial de migraciones aplicado, las filas que
+dejó una corrida anterior, un servidor que arrancó con otro schema. Un `"98
+passed"` reproducido es una afirmación sobre una base que ya no existe — el mismo
+falso verde que saltarse las suites, pero más difícil de ver porque nada parece
+estar mal. Va en `turbo.json` y no como `TURBO_FORCE` en el workflow porque eso
+también apagaría el caché de `build`, que es la parte cara.
+
+**Por qué las migraciones antes de los tests.** Sin ellas las suites corren y cada
+query falla con `P2021 "table does not exist"`, que se lee como un repositorio
+roto y no como una migración faltante.
+
+**Por qué `postgres:17-alpine` y no `latest`.** Un salto de versión mayor puede
+cambiar collation o rigurosidad y poner en rojo un build por motivos que no tienen
+nada que ver con el código. La base local de desarrollo es Postgres 17.
+
+**Aprendido.** Un gate que puede fallar en silencio no es un gate. La pregunta
+útil no es "¿el test corrió?" sino **"¿qué pasa si no corre?"**, y la respuesta
+tenía que ser distinta en local y en CI. Y el orden importa: primero definir cómo
+falla, después agregar la infraestructura. Al revés, la infraestructura nueva se
+convierte en otro camino donde el silencio puede aparecer.
+
+---
+
+## D-027 — `prisma:migrate:*` estaba roto: faltaba `--config`
+
+**Bug encontrado de paso**, no buscado. Los tres scripts `prisma:migrate:*` de
+`@repo/infrastructure` pasaban `--schema` pero no `--config`, y fallaban siempre
+con `The datasource.url property is required in your Prisma config file`.
+
+`prisma generate` sí funciona sin `--config` (no necesita el datasource), así que
+el `postinstall` de CI nunca lo detectó. Y `.github/workflows/ci.yml` solo corría
+`pnpm test`, así que el comando roto era invisible para todos.
+
+Al agregar el paso `Apply migrations` al workflow, el build habría fallado en el
+primer push por un comando que llevaba tiempo roto.
+
+**Aprendido.** La asimetría `generate` funciona / `migrate` no es la misma clase de
+bug que los 35 tests, un nivel más abajo: **nada ejercitaba el camino**. El único
+comando de migración que el repo ejecutaba automáticamente es el `postinstall`, y ese
+no pasa por `--config`. Un script que nadie corre no está roto de forma visible:
+está roto de forma invisible, que es peor, porque lo descubre el que acaba de
+agregar el paso que lo usa.

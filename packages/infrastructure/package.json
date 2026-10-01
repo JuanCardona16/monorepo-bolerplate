@@ -27,9 +27,9 @@
     "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
     "test": "vitest run",
     "prisma:generate": "prisma generate --schema ./src/persistence/postgresSql/prisma/schema.prisma",
-    "prisma:migrate:dev": "prisma migrate dev --schema ./src/persistence/postgresSql/prisma/schema.prisma",
-    "prisma:migrate:deploy": "prisma migrate deploy --schema ./src/persistence/postgresSql/prisma/schema.prisma",
-    "prisma:migrate:status": "prisma migrate status --schema ./src/persistence/postgresSql/prisma/schema.prisma",
+    "prisma:migrate:dev": "prisma migrate dev --schema ./src/persistence/postgresSql/prisma/schema.prisma --config ./src/persistence/postgresSql/config/prisma.config.ts",
+    "prisma:migrate:deploy": "prisma migrate deploy --schema ./src/persistence/postgresSql/prisma/schema.prisma --config ./src/persistence/postgresSql/config/prisma.config.ts",
+    "prisma:migrate:status": "prisma migrate status --schema ./src/persistence/postgresSql/prisma/schema.prisma --config ./src/persistence/postgresSql/config/prisma.config.ts",
     "prisma:promote-admin": "tsx src/persistence/postgresSql/scripts/promoteAdmin.ts",
     "postinstall": "pnpm run prisma:generate"
   },
