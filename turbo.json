@@ -15,6 +15,16 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      // `.env*` in the inputs: without it, a cached test result is reused after
+      // `.env.local` changes, so `pnpm test` can return a green built against an
+      // environment that no longer exists. `build` already declared it.
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      // Declared so Turbo both hashes it into the cache key and passes it
+      // through to the task. Undeclared, `turbo run test` filtered it out and
+      // the 35 integration tests that need a real database skipped themselves
+      // with `describe.skipIf(!process.env.DATABASE_URL)` — on every run, not
+      // only in CI. They were unreachable through the normal command.
+      "env": ["DATABASE_URL"],
       "outputs": ["coverage/**"]
     },
     "dev": {

@@ -58,14 +58,44 @@ describe("router configuration", () => {
 
     // `collectPaths` joins each child with its parent, so the catch-all reads
     // as `/*` rather than the bare `*` declared in the config.
-    expect(paths.sort()).toEqual(["/", "/*", "/login", "/register"]);
+    expect(paths.sort()).toEqual([
+      "/",
+      "/*",
+      "/forgot-password",
+      "/login",
+      "/register",
+      "/reset-password",
+    ]);
   });
 
   it("nests the routes inside the layout element", () => {
     const root = router.routes[0];
 
     expect(root?.element).toBeDefined();
-    expect(root?.children).toHaveLength(4);
+    expect(root?.children).toHaveLength(6);
+  });
+
+  it("keeps the password reset routes outside the auth guard", () => {
+    // Both are reachable by exactly the people who cannot sign in: someone who
+    // forgot their password has no access token, so wrapping them in
+    // `RequireAuth` would redirect them to a login form they cannot pass. Asserted
+    // structurally because a routing bug here is invisible in a render test.
+    const root = router.routes[0];
+    const children = (root?.children ?? []) as {
+      path?: string;
+      element?: { type?: unknown } | React.ReactElement;
+    }[];
+
+    for (const path of [AppRoutes.FORGOT_PASSWORD, AppRoutes.RESET_PASSWORD]) {
+      const route = children.find((child) => child.path === path);
+      expect(route).toBeDefined();
+      const element = route?.element as React.ReactElement | undefined;
+      // `RequireAuth` wraps its children in a Navigate, so a guarded route has
+      // a component whose rendered tree contains one. A direct page element
+      // does not.
+      expect(element).toBeDefined();
+      expect((element as { type?: { name?: string } }).type?.name).not.toBe("RequireAuth");
+    }
   });
 
   it("registers a wildcard route as the last child so it cannot shadow a real path", () => {
@@ -120,6 +150,26 @@ describe("router navigation with RouterProvider", () => {
 
     expect(await screen.findByRole("heading", { name: "Create your account" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign In" })).toBeInTheDocument();
+  });
+
+  it("renders the forgot-password form at its route", async () => {
+    await goTo(AppRoutes.FORGOT_PASSWORD);
+
+    renderRouter();
+
+    expect(
+      await screen.findByRole("heading", { name: "Reset your password" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the reset-password page at its route, even with no token in the URL", async () => {
+    // The route must not blow up or bounce to login when the fragment is empty:
+    // a link stripped by an email client lands here, and it has to say so.
+    await goTo(AppRoutes.RESET_PASSWORD);
+
+    renderRouter();
+
+    expect(await screen.findByRole("heading", { name: "This link is not valid" })).toBeInTheDocument();
   });
 
   it("keeps the authenticated user on the home route", async () => {

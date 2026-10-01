@@ -11,14 +11,29 @@ describe("statusForCode", () => {
   it.each([
     ["INVALID_CREDENTIALS", 401],
     ["INVALID_REFRESH_TOKEN", 401],
+    // A reset token is a bearer credential: a bad one is a failed
+    // authentication, not a malformed request. 400 would suggest the body is
+    // wrong and invite a client to retry the same call unchanged.
+    ["INVALID_RESET_TOKEN", 401],
     ["UNAUTHORIZED", 401],
     ["USER_ALREADY_EXISTS", 409],
     ["INVALID_EMAIL", 400],
     ["WEAK_PASSWORD", 400],
     ["INVALID_ROLE", 400],
     ["VALIDATION_ERROR", 400],
+    // 502, not 500: our side worked and the upstream provider did not. A 500
+    // would send the caller to retry against the wrong service and file the
+    // incident against a team that cannot fix it.
+    ["EMAIL_SEND_FAILED", 502],
   ])("maps %s to %i", (code, expected) => {
     expect(statusForCode(code)).toBe(expected);
+  });
+
+  it("does not leak the reset token status through a 500", () => {
+    // Guard against a plausible future edit: the map is a lookup and a missing
+    // entry degrades to 500, which would still be a *correct-looking* response.
+    expect(statusForCode("RESET_TOKEN_EXPIRED")).toBe(500);
+    expect(statusForCode("UNKNOWN_RESET_TOKEN")).toBe(500);
   });
 
   it("falls back to 500 for a code the gateway does not know", () => {

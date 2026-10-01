@@ -62,6 +62,26 @@ describe("LoginPage rendering", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
+  it("links to the password reset page instead of promising one later", () => {
+    // It used to be a `<span title="Coming soon">`. The flow exists now, and a
+    // real link is the honest version: it navigates, and it is reachable by
+    // keyboard and by assistive technology, which a disabled span was not.
+    renderLogin();
+
+    const link = screen.getByRole("link", { name: "Forgot password?" });
+    expect(link).toHaveAttribute("href", "/forgot-password");
+  });
+
+  it("renders the forgot-password entry as a link, not a disabled span", () => {
+    // The Google sign-in button is legitimately still disabled, so this is scoped
+    // to the element that used to be a span next to the password field.
+    renderLogin();
+
+    const link = screen.getByRole("link", { name: "Forgot password?" });
+    expect(link.tagName).toBe("A");
+    expect(link).not.toHaveAttribute("title", "Coming soon");
+  });
+
   it("states the session length instead of pretending it is optional", () => {
     renderLogin();
 

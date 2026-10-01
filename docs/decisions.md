@@ -411,6 +411,118 @@ elimina la clase de bug, no el síntoma: ninguna suite nueva puede olvidarlo.
    alguna suite intenta conectarse de verdad, tiene que fallar ruidosamente en
    vez de alcanzar en silencio una base que casualmente esté levantada.
 
+### El `delete` estaba exactamente al revés
+
+La primera versión hacía `delete process.env.ACCESS_LOG_IPS`. Parece la forma
+limpia de "no dejar que la variable del shell moleste", y es **lo contrario**.
+
+`dotenv` **no** sobreescribe una variable que ya está en `process.env` (verificado
+empíricamente contra dotenv 18.0.4). Entonces `delete` no desactiva nada:
+**libera el nombre**, y después `config/env/index.ts` corre `dotenv.config()` y
+re-inyecta `ACCESS_LOG_IPS=true` desde `.env.local`. Reproducido: con un
+`.env.local` que la define, el test de access log falla con
+`expected '::ffff:127.0.0.1 - "GET…' to match /^- "GET/`.
+
+La corrección es `= "false"`: con el valor presente, dotenv lo respeta.
+
+**Y otra cobertura perdida de paso:** el setup fijaba `DOCS_ENABLED = "true"`, con
+lo cual **ninguna suite** ejercitaba la rama
+`DOCS_ENABLED === undefined && NODE_ENV !== "production"` — que es justamente el
+default que la variable documenta. El comentario del test de docs seguía
+afirmando lo contrario. Ahora la variable se deja sin setear a propósito, y un
+test afirma que lo está, para que volver a pinearla falle.
+
+---
+
+## D-022 — 35 tests invisibles: `turbo run test` filtraba `DATABASE_URL`
+
+**Decisión.** La task `test` de `turbo.json` declara `env: ["DATABASE_URL"]` e
+`inputs: ["$TURBO_DEFAULT$", ".env*"]`.
+
+**Por qué.** Los 35 tests de integración de `@repo/infrastructure` se saltan con
+`describe.skipIf(!process.env.DATABASE_URL)`. Como Turbo filtra las variables no
+declaradas, `DATABASE_URL` **nunca llegaba a la task**, ni siquiera en local con
+la base andando. No era un problema de CI: era que esos tests eran
+**inalcanzables por el comando normal**, siempre.
+
+Es el peor tipo de falso verde: no falla, **desaparece**. Un mapper o un
+repositorio roto llegaba a `main` con CI verde y con un `pnpm test` verde en la
+máquina del desarrollador.
+
+Con el fix: `@repo/infrastructure` pasa de `63 passed | 35 skipped` a **98 passed**.
+
+**Aprendido.** Correr los tests de un paquete directo (`pnpm --filter X exec
+vitest run`) **sí** ve la variable. Eso es exactamente por lo que el problema
+era invisible: el comando de debugging funciona y el comando del día a día no. Un
+camino que funciona solo en debugging es un camino que nadie va a extrañar.
+
+Además, `inputs: [".env*"]` en `test` cierra un agujero aparte: sin eso, un
+resultado cacheado se reutiliza después de que `.env.local` cambie, y `pnpm
+test` puede devolver un verde construido contra un entorno que ya no existe.
+`build` ya lo declaraba; `test` no.
+
+---
+
+## D-023 — Opcional no puede significar silencioso
+
+**Decisión.** `RESEND_API_KEY`, `PASSWORD_RESET_URL` y `EMAIL_FROM` quedan
+opcionales (un `required()` impediría que arranque el login porque a alguien se
+le olvidó una contraseña), pero `config/env/index.ts` **avisa por consola** de
+cada una que falte, **solo en producción**.
+
+**Por qué.** `PASSWORD_RESET_URL` cae a `http://localhost:5173/reset-password`. Un
+despliegue en producción que olvide la variable entrega emails de reset
+**válidos** con un link a localhost: el envío funciona, el link está muerto, y
+nada en ningún lado lo reporta. Peor: el use case traga **todos** los errores del
+sender a propósito (D-005 y el razonamiento de enumeración de abajo), así que
+tampoco el adaptador va a quejarse.
+
+**"No debe romper el arranque" y "no debe ser silencioso" son dos requisitos
+distintos, y solo el segundo estaba cumplido.**
+
+**Aprendido.** Tragarse errores para proteger una garantía de seguridad es
+correcto, pero crea una zona ciega: la misma decisión que impide que un bug del
+adaptador se convierta en un oráculo de enumeración también impide que una mala
+configuración se note. La salida no es aflojar el `catch`, es poner la señal **en
+el borde del módulo de configuración**, que es el único lugar que sabe qué se
+faltó.
+
+## D-024 — `forgot` traga TODOS los errores del sender, no solo los previstos
+
+**Decisión.** `RequestPasswordResetUseCase` envuelve el `send` en un `catch`
+vacío, sin filtrar por tipo.
+
+**Por qué.** Re-lanzar un error inesperado respondería **500 para una cuenta real
+y 200 para una desconocida**: exactamente el oráculo de enumeración que la clase
+existe para impedir. El silencio quedaría dependiente de que nunca pase nada
+inesperado, y eso no se puede garantizar. El costo —que el fallo del proveedor no
+se ve en el use case— lo paga el adaptador, que es la única capa que sabe qué se
+rompió, y registra sin el token.
+
+**El token viaja en el fragment de la URL** (`#token=...`), no en la query: los
+browsers nunca transmiten el fragment, así que no puede llegar al access log, al
+log de un proxy inverso, ni al `Referer` de la página que el usuario visite
+después.
+
+---
+
+## D-025 — Un test sobre un hook no prueba qué hace el hook
+
+**Aprendido.** Dos de las primeras pruebas del adaptador de email afirmaban que
+el token no se registraba, pero lo hacían sobre el callback `onFailure` inyectado,
+no sobre `console.error`. Esas aserciones pasan para **cualquier** implementación
+que registre por el hook, así que un `console.error(message.text)` real, al lado,
+se colaba sin que nada fallara.
+
+Peor: al corregir la prueba, se descubrió un error propio dentro de ella —
+afirmaba sobre `console.error` **mientras inyectaba un stub**, lo que reemplaza el
+logger real, con lo que la prueba no afirmaba nada. La corrección fue construir el
+sender sin el override y espiar el sumidero verdadero.
+
+Misma clase que D-016: **una prueba que controla su propio input no puede
+sorprender a la implementación**. Espiar el sink real, no el puerto que la
+implementación eligió usar.
+
 ---
 
 ## D-019 — Un `fetch` que rechaza se normaliza en el cliente, no en cada página

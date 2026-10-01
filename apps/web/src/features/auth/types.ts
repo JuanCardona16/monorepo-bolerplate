@@ -12,6 +12,15 @@ export interface SessionPayload {
   accessToken: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  password: string;
+}
+
 export interface Profile {
   uuid: string;
   email: string;
