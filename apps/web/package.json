@@ -22,6 +22,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@eslint/js": "^10.0.1",
+    "@repo/core": "workspace:*",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/dom": "^10.4.2",
@@ -40,7 +41,7 @@
     "globals": "^17.12.0",
     "jsdom": "30.1.1",
     "tailwindcss": "4.3.3",
-    "typescript": "~6.0.2",
+    "typescript": "7.0.2",
     "typescript-eslint": "^8.69.0",
     "vite": "^8.3.0",
     "vitest": "4.1.10"
