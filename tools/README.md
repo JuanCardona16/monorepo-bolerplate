@@ -2,6 +2,20 @@
 
 Local developer helpers. Nothing here ships or is imported by the applications.
 
+## `with-github-token.ps1`
+
+Runs any command with the repo's GitHub token from root `.env.local`
+(`OPENCODE_GITHUB_TOKEN`, fallback `GITHUB_TOKEN`), resolved per invocation.
+The file wins over process env (opposite to `gh.ps1`, on purpose: a stale
+persisted token would otherwise shadow the live one in every fresh shell).
+Never stored, never printed; exported as `GITHUB_TOKEN`/`GH_TOKEN` for the
+child call only.
+
+```powershell
+powershell -File tools\with-github-token.ps1 gh auth status
+powershell -File tools\with-github-token.ps1 gh pr list --state open
+```
+
 ## `gh.ps1`
 
 Runs the GitHub CLI with a token resolved at call time.
