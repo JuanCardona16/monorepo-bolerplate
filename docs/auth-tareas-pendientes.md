@@ -1,6 +1,6 @@
 # Auth — Tareas pendientes
 
-> Revisado el 2026-10-01 contra el árbol vigente (`main` @ `5746c86`).
+> Revisado el 2026-10-03 contra el árbol vigente (`main` @ `5b2fa54`).
 > La parte HTTP vive en `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
 > Decisiones registradas con su motivo en [`decisions.md`](./decisions.md).
 >
@@ -97,14 +97,50 @@ pueden volver a reportarse como skipped sin romper el build (D-026).
 
 ### Deuda técnica
 
-- [ ] **`pnpm lint` fuera de CI**, deliberadamente, hasta que la base de lint
-      esté limpia. Es la última tarea técnica que no necesita nada del usuario.
+- [ ] **`pnpm lint` está roto en todo el repo, y no por el código.** Falla con
+      `Error: typescript-eslint does not support TS 7.0.` — un portón de versión
+      dentro del parser. **Ningún check de CI está rojo**: `ci.yml` define
+      exactamente tres jobs (`build`, `check-types`, `test`) y `lint` no es uno de
+      ellos. Los gates confiables hoy son esos tres.
+      Salidas, ninguna trivial: esperar a que `typescript-eslint` soporte TS >= 7.1
+      (issue typescript-eslint#10940), o apuntar el parser a la API de TS 6 en
+      modo side-by-side. **No intentar resolverlo subiendo la versión**: el peer
+      declarado es `typescript: ">=4.8.4 <6.1.0"` y el repo está en 7.0.2.
+      Ver *Por qué no hay lint en CI* abajo.
+- [ ] **Lint solo cubre `apps/web`.** Los cuatro paquetes de backend
+      (`@repo/core`, `@repo/security`, `@repo/infrastructure`, `api-gateway`) no
+      definen script `lint`, y `@repo/eslint-config` no lo consume nadie. Agregar
+      el job tal cual sería un verde que miente: 1 de 5 paquetes.
 - [ ] **Caché de Turbo sin `outputs` para `apps/web`** (`turbo.json` conserva
       `.next/**` de la plantilla original, que este repo no usa).
 - [ ] **`prisma.config.ts` es un caso latente de la misma clase que D-021**: corre
       `dotenv.config()` al importarse y pasa `process.env.DATABASE_URL` sin
       validar. Hoy ningún test lo importa, así que no falla, pero el día que uno lo
       haga va a tener exactamente el modo de fallo del env en tiempo de import.
+
+### Por qué no hay lint en CI
+
+Se intentó (2026-10-01 y 2026-10-03) y se documenta el resultado porque el nombre
+`pnpm lint` sugiere cobertura del repo y no la tiene.
+
+**El hallazgo de fondo**: el workspace usa **un solo TypeScript, 7.0.2** — root,
+las tres bibliotecas y `apps/web`. `typescript-eslint` (incluida su última
+versión) declara soporte hasta `<6.1.0` y **se niega a arrancar** con TS 7.
+
+Lo que se llegó a probar y descartó:
+
+1. **Un config compartido con el parser de TS + reglas de JS puro.** Descartado:
+   `@typescript-eslint/parser@8.69.0` **también** rechaza TS 7. El parser es
+   justamente la capa que no soporta la versión. El error lo dice:
+   *"Please see ... to run typescript-eslint using the TS 6 API"*.
+2. **Usar el TS 6 que tenía `apps/web`.** Descartado: `apps/web` ya declaraba
+   `typescript: 7.0.2` al momento de intentarlo, no `~6.0.2`. Esa versión del
+   `package.json` era la que mentía, y por eso el parser fallaba igual.
+3. **Subir `typescript-eslint` a la última.** No alcanza: el peer declarado sigue
+   siendo `<6.1.0`.
+
+Lo que sí funciona hoy: `pnpm build`, `pnpm check-types` y `pnpm test`. Un verde
+de esos tres es la señal real; un verde de `pnpm lint` no significa nada.
 
 ## Historial de trampas pagadas
 
