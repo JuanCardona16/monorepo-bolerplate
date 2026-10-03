@@ -41,3 +41,16 @@ yarn-error.log*
 *.pem
 # Local Pi runtime state
 .atl/
+
+# Local-only: no se suben al remoto (TK-11).
+# Se mantienen trackeados a propósito y NO van acá:
+# - .github/workflows/ci.yml (3 checks requeridos en main)
+# - .opencode/agents/ (estándar compartido del repo)
+# - .engram/config.json (autodetección de proyecto)
+# - .codegraph/.gitignore (el índice ya se auto-ignora)
+.engram/*
+!.engram/config.json
+engram-export.json
+.codegraph/*
+!.codegraph/.gitignore
+odd/
