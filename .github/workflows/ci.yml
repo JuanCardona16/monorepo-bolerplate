@@ -15,6 +15,13 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
+    # Remote cache (TK-04). TURBO_TOKEN is a secret, TURBO_TEAM a variable;
+    # the concatenation accepts whichever side the team value was saved on.
+    # The `test` job is intentionally excluded: its task has `cache: false`
+    # (live database), so remote cache could never serve it.
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}${{ secrets.TURBO_TEAM }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,6 +39,9 @@ jobs:
   check-types:
     name: check-types
     runs-on: ubuntu-latest
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}${{ secrets.TURBO_TEAM }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

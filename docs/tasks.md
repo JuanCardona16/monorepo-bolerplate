@@ -20,14 +20,6 @@ Reglas:
 > Última revisión 2026-10-03 contra el árbol vigente. La parte HTTP vive en
 > `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
 
-## 🔴 Bloqueado — requiere al usuario
-
-Ninguno de estos lo puede cerrar el agente: necesitan credenciales, decisiones o
-acciones tuyas. Cada uno dice cómo confirmar que se hizo.
-
-- [ ] **TK-04 — Caché remoto de Turbo.** Requiere token.
-  Verificar: `turbo build` reporta hits remotos en CI.
-
 ## 🟡 Decisiones de producto, no técnicas
 
 - [ ] **TK-06 — "Recordarme" real.** La web no ofrece el control: la duración la decide el
@@ -63,3 +55,7 @@ No están en el camino actual; cuando se activen vuelven a su sección por estad
   ofrece; `CLIENT_GOOGLE_ID/SECRET` se eliminaron (D-017) y se re-agregan cuando
   la feature exista.
   Verificar: botón visible + login completo contra Google.
+- [ ] **TK-04 — Caché remoto de Turbo.** Diferido: es optimización, nada lo requiere.
+  Estado: cableado listo en rama `feature/TK-04-turbo-remote-ci` (PR #33 cerrado sin
+  mergear, reabrible). Falta token Vercel con escritura en Remote Cache Artifact.
+  Verificar: `turbo build` reporta hits remotos en CI.
