@@ -59,6 +59,10 @@ autonomía, no de código.
 
 ### Rutina por tarea (TK)
 
+Esta rutina es la capa operativa **sobre** ODD, no su reemplazo: autorizar →
+explorar → clasificar → trackear → implementar → verificar → cerrar sigue
+mandando. Lo de abajo dice *cómo* se ejecuta cada paso en este repo.
+
 1. **Leer primero, siempre.** Antes de tocar nada: `docs/tasks.md` (qué está
    pendiente), `docs/traps.md` (trampas del área), Engram (`mem_search` en
    `monorepo-bolerplate`: decisiones y estado de sesión), y `docs/architecture.md`
