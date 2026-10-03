@@ -87,6 +87,30 @@ mandando. Lo de abajo dice *cómo* se ejecuta cada paso en este repo.
 7. **Estas reglas no se negocian por apuro.** Si una choca con el pedido (piden
    tocar lo verificado, saltear tests, no documentar), se frena y se pregunta.
 
+### Delegación a subagentes
+
+Los agentes viven en tres capas: builtins (`explore`, `general`), globales
+(`test-writer`, `doc-writer`, `sdd-*` en `~/.config/opencode`) y de repo
+(`.opencode/agents/`). El ruteo por fase de un TK:
+
+| Fase del TK | Agente | Por qué ese |
+|---|---|---|
+| Explorar/mapear (4+ archivos, sin writes) | `explore` | Read-only por construcción |
+| Tests primero (TDD) | `test-writer` | Escribe tests, prohíbe tocar implementación |
+| Implementar (2+ archivos o write con lectura previa) | `implementer` (repo) | Acotado al prompt, reporta verificación real |
+| Verificación independiente (riesgo alto) | `reviewer` (repo) | Solo lectura, veredicto con evidencia |
+| Docs de un cambio | `doc-writer` | Prohíbe inventar y cambiar código |
+| Fases SDD (solo SDD explícito) | `sdd-*` | Nunca para trabajo orgánico |
+
+Al delegar, el prompt lleva siempre: alcance exacto (archivos), skills
+resueltas (`## Skills to load`), `## Verification` con los comandos a correr,
+y `## Known environmental failures` si aplica. Los subagentes nacen sin memoria:
+se pasan referencias (topic keys, rutas), nunca el contenido. Resultado con
+`status` distinto de éxito = no se avanza a la fase dependiente.
+
+Si los subagentes no están disponibles en el entorno (ej. tier gratuito fuera de
+OpenCode), se trabaja inline y se declara — nunca se finge la delegación.
+
 ## Setup
 
 - `pnpm@12.5.1`, `node >= 24`. Siempre `pnpm`; nada de npm/yarn.
