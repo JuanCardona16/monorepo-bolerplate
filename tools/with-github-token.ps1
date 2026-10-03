@@ -22,27 +22,37 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Resolve-RepoToken {
-    # Explicit process env always wins over the file.
-    if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN }
+    # The repo file is the authority for THIS wrapper (that is its whole job:
+    # "use the repo's token"). Process env is only a fallback when the file
+    # has no key. This order is deliberate and opposite to gh.ps1: a stale
+    # persisted GITHUB_TOKEN in the OS user env would otherwise shadow the
+    # live repo token in every fresh shell, exactly the failure this script
+    # was built to eliminate.
 
     $root = Split-Path -Parent $PSScriptRoot
     $envFile = Join-Path $root '.env.local'
-    if (-not (Test-Path $envFile)) {
-        Write-Error "No token in process env and no .env.local at repo root."
-        exit 1
+    if (Test-Path $envFile) {
+        $found = @{}
+        foreach ($line in (Get-Content $envFile)) {
+            $t = $line.Trim()
+            if (-not $t -or $t.StartsWith('#') -or -not ($t -match '=')) { continue }
+            $k, $v = $t.Split('=', 2)
+            $found[$k.Trim()] = $v.Trim().Trim('"').Trim("'")
+        }
+        foreach ($key in @('OPENCODE_GITHUB_TOKEN', 'GITHUB_TOKEN')) {
+            if ($found[$key]) { return $found[$key] }
+        }
     }
 
-    $found = @{}
-    foreach ($line in (Get-Content $envFile)) {
-        $t = $line.Trim()
-        if (-not $t -or $t.StartsWith('#') -or -not ($t -match '=')) { continue }
-        $k, $v = $t.Split('=', 2)
-        $found[$k.Trim()] = $v.Trim().Trim('"').Trim("'")
+    # Fallback: explicit process env, for one-off overrides when the file
+    # has neither key.
+    if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN }
+
+    if (Test-Path $envFile) {
+        Write-Error ".env.local has neither OPENCODE_GITHUB_TOKEN nor GITHUB_TOKEN."
+    } else {
+        Write-Error "No token in process env and no .env.local at repo root."
     }
-    foreach ($key in @('OPENCODE_GITHUB_TOKEN', 'GITHUB_TOKEN')) {
-        if ($found[$key]) { return $found[$key] }
-    }
-    Write-Error ".env.local has neither OPENCODE_GITHUB_TOKEN nor GITHUB_TOKEN."
     exit 1
 }
 
