@@ -24,11 +24,6 @@ Reglas:
 
 Ninguno de estos lo puede cerrar el agente: necesitan credenciales, decisiones o
 acciones tuyas. Cada uno dice cómo confirmar que se hizo.
-
-- [ ] **TK-01 — Migración `20260930093000_password_reset_tokens` en Neon.** Aplicada en la
-  base local; no se tocó la de la app por criterio. Sin esto, el reset funciona
-  en local y responde `P2021` en producción.
-  Verificar: `prisma:migrate:status` contra Neon sin migraciones pendientes.
 - [ ] **TK-02 — Variables de email en el entorno real**: `RESEND_API_KEY`, `EMAIL_FROM`,
   `PASSWORD_RESET_URL`. Opcionales a propósito (D-023), pero sin
   `PASSWORD_RESET_URL` los emails llevan links muertos a localhost.
