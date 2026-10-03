@@ -9,6 +9,10 @@ import type { IdGenerator } from "../../ports/IdGenerator.js";
 import type { PasswordHasher } from "../../ports/PasswordHasher.js";
 import type { RefreshTokenHasher } from "../../ports/RefreshTokenHasher.js";
 import type { TokenProvider } from "../../ports/TokenProvider.js";
+import {
+  LONG_SESSION_TTL_MS,
+  SHORT_SESSION_TTL_MS,
+} from "../../sessionLifetimes.js";
 
 const USER_UUID = "user-uuid-1";
 const HASH = "hashed-password";
@@ -127,6 +131,7 @@ describe("LoginUseCase", () => {
       expect(result).toEqual({
         accessToken: "access-token",
         refreshToken: "raw-token",
+        rememberMe: false,
       });
     });
 
@@ -255,6 +260,34 @@ describe("LoginUseCase", () => {
         .catch(() => undefined);
 
       expect(deps.tokenProvider.generate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("remember me", () => {
+    it("defaults to a short session: 24h expiry, flag false persisted and returned", async () => {
+      const deps = makeDeps({ idGenerator: sequentialIds("raw-token", "row-id") });
+      const before = Date.now();
+
+      const result = await useCase(deps).execute(validInput);
+
+      const saved = vi.mocked(deps.refreshTokenRepository.save).mock.calls[0]?.[0];
+      expect(result.rememberMe).toBe(false);
+      expect(saved?.rememberMe).toBe(false);
+      expect(saved?.expiresAt.getTime()).toBeGreaterThanOrEqual(before + SHORT_SESSION_TTL_MS);
+      expect(saved?.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + SHORT_SESSION_TTL_MS);
+    });
+
+    it("issues a 30-day session when rememberMe is true", async () => {
+      const deps = makeDeps({ idGenerator: sequentialIds("raw-token", "row-id") });
+      const before = Date.now();
+
+      const result = await useCase(deps).execute({ ...validInput, rememberMe: true });
+
+      const saved = vi.mocked(deps.refreshTokenRepository.save).mock.calls[0]?.[0];
+      expect(result.rememberMe).toBe(true);
+      expect(saved?.rememberMe).toBe(true);
+      expect(saved?.expiresAt.getTime()).toBeGreaterThanOrEqual(before + LONG_SESSION_TTL_MS);
+      expect(saved?.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + LONG_SESSION_TTL_MS);
     });
   });
 });

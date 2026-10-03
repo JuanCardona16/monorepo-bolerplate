@@ -7,12 +7,16 @@ import type { RefreshTokenRepository } from "../../../domain/repositories/Refres
 import type { IdGenerator } from "../../ports/IdGenerator.js";
 import type { RefreshTokenHasher } from "../../ports/RefreshTokenHasher.js";
 import type { TokenProvider } from "../../ports/TokenProvider.js";
+import {
+  LONG_SESSION_TTL_MS,
+  SHORT_SESSION_TTL_MS,
+} from "../../sessionLifetimes.js";
 
 const USER_UUID = "user-uuid-1";
 const STORED_HASH = "stored-token-hash";
 const NEW_TOKEN_HASH = "new-token-hash";
 
-function makeStoredToken(overrides: Partial<{ revokedAt: Date | null; expiresAt: Date }> = {}): RefreshToken {
+function makeStoredToken(overrides: Partial<{ revokedAt: Date | null; expiresAt: Date; rememberMe: boolean }> = {}): RefreshToken {
   return new RefreshToken({
     id: "stored-id",
     userUuid: USER_UUID,
@@ -20,6 +24,7 @@ function makeStoredToken(overrides: Partial<{ revokedAt: Date | null; expiresAt:
     roles: ["user"],
     expiresAt: overrides.expiresAt ?? new Date(Date.now() + 60_000),
     revokedAt: overrides.revokedAt ?? null,
+    rememberMe: overrides.rememberMe ?? true,
   });
 }
 
@@ -96,7 +101,7 @@ describe("RefreshTokenUseCase", () => {
     it("returns a new access token and a new raw refresh token", async () => {
       const result = await useCase(makeDeps()).execute({ refreshToken: "raw-token" });
 
-      expect(result).toEqual({ accessToken: "access-token", refreshToken: "raw-token" });
+      expect(result).toEqual({ accessToken: "access-token", refreshToken: "raw-token", rememberMe: true });
     });
 
     it("hashes the presented token before looking it up", async () => {
@@ -205,6 +210,42 @@ describe("RefreshTokenUseCase", () => {
         .catch(() => undefined);
 
       expect(deps.refreshTokenRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("remember-me propagation", () => {
+    it("rotates a short session into a short session", async () => {
+      const deps = makeDeps({
+        refreshTokenRepository: makeRefreshTokenRepository(
+          makeStoredToken({ rememberMe: false }),
+        ),
+      });
+      const before = Date.now();
+
+      const result = await useCase(deps).execute({ refreshToken: "raw-token" });
+
+      const rotated = deps.refreshTokenRepository.saved[1];
+      expect(result.rememberMe).toBe(false);
+      expect(rotated?.rememberMe).toBe(false);
+      expect(rotated?.expiresAt.getTime()).toBeGreaterThanOrEqual(before + SHORT_SESSION_TTL_MS);
+      expect(rotated?.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + SHORT_SESSION_TTL_MS);
+    });
+
+    it("rotates a long session into a long session", async () => {
+      const deps = makeDeps({
+        refreshTokenRepository: makeRefreshTokenRepository(
+          makeStoredToken({ rememberMe: true }),
+        ),
+      });
+      const before = Date.now();
+
+      const result = await useCase(deps).execute({ refreshToken: "raw-token" });
+
+      const rotated = deps.refreshTokenRepository.saved[1];
+      expect(result.rememberMe).toBe(true);
+      expect(rotated?.rememberMe).toBe(true);
+      expect(rotated?.expiresAt.getTime()).toBeGreaterThanOrEqual(before + LONG_SESSION_TTL_MS);
+      expect(rotated?.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + LONG_SESSION_TTL_MS);
     });
   });
 
