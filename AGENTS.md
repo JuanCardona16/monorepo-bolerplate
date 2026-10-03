@@ -57,6 +57,32 @@ autonomía, no de código.
 - Los artefactos técnicos (código, UI copy, commits, docs de `docs/`) van en
   inglés salvo que el archivo ya esté en español — se sigue el idioma del archivo.
 
+### Rutina por tarea (TK)
+
+1. **Leer primero, siempre.** Antes de tocar nada: `docs/tasks.md` (qué está
+   pendiente), `docs/traps.md` (trampas del área), Engram (`mem_search` en
+   `monorepo-bolerplate`: decisiones y estado de sesión), y `docs/architecture.md`
+   si hay que ubicarse. Memoria fresca antes que manos en el código.
+2. **Rama nueva por tarea**: `<tipo>/TK-NN-descripcion-corta` (`docs/`,
+   `feature/`, `bugfix/`, `ci/`). Ej: `feature/TK-10-login-google`. Una tarea =
+   una rama; nada de dos TK en la misma rama.
+3. **Lo verificado no se toca.** Una tarea cerrada y en verde solo se reabre por
+   vulnerabilidad/fallo encontrado, o porque otra feature la rompe y hay que
+   adaptarla. Mejoras "de paso" van a `tasks.md` como TK nuevo, no al diff actual.
+4. **Cachear al cerrar**: guardar en Engram lo aprendido (decisión, bug, gotcha)
+   y sincronizar el índice de codegraph (`sync <root>`) tras editar. Engram =
+   porqué y estado; codegraph = dónde está el código. No se cachea trivia.
+5. **Docs al día al cerrar**: `tasks.md` (tachar el TK), Engram si hubo decisión
+   nueva, y el doc alcanzado si cambió el contrato. Commit de cierre separado de
+   docs vs código cuando aplique.
+6. **TDD siempre en código**: test primero en la categoría que corresponda
+   (unitario/integración), rojo observado, después el código mínimo que lo pone
+   en verde, después refactor. Verificado por mutación cuando el test pina un bug.
+   En tareas solo-docs, la "prueba" es el readback de verificación, no un test
+   inventado.
+7. **Estas reglas no se negocian por apuro.** Si una choca con el pedido (piden
+   tocar lo verificado, saltear tests, no documentar), se frena y se pregunta.
+
 ## Setup
 
 - `pnpm@12.5.1`, `node >= 24`. Siempre `pnpm`; nada de npm/yarn.
