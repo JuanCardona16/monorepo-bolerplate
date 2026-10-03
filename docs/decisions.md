@@ -636,3 +636,118 @@ comando de migración que el repo ejecutaba automáticamente es el `postinstall`
 no pasa por `--config`. Un script que nadie corre no está roto de forma visible:
 está roto de forma invisible, que es peor, porque lo descubre el que acaba de
 agregar el paso que lo usa.
+
+---
+
+## D-028 — El contrato de auth lo define `@repo/core`, y `web` solo re-exporta
+
+**Decisión.** `apps/web/src/features/auth/types.ts` pasó de seis interfaces escritas
+a mano a seis `export type` que re-exportan el tipo que realmente define la forma.
+`@repo/core` entra como **devDependency** de `web`, no como dependencia: todos los
+imports son tipo puro y `verbatimModuleSyntax` los borra, así que nada llega al
+bundle del navegador.
+
+| nombre en web | dueño en core |
+|---|---|
+| `LoginInput` | `LoginInputDTO` |
+| `RegisterInput` | `RegisterInputDTO` |
+| `SessionPayload` | `SessionDTO` (nuevo) |
+| `ForgotPasswordInput` | `RequestPasswordResetInput` |
+| `ResetPasswordInput` | `ConfirmPasswordResetInput` |
+| `Profile` | `ProfileOutput` |
+
+**Por qué.** `web` hablaba con la API sobre HTTP y **no tenía ninguna dependencia
+workspace**: nada en build probaba que las dos formas siguieran de acuerdo. Agregar un
+campo al DTO del gateway compilaba limpio en el cliente y el campo se perdía en
+silencio. Es la misma clase de falso verde que D-022, un nivel más arriba: no
+falla, desaparece.
+
+**Por qué se conservan los nombres de web.** `LoginInput` y `LoginInputDTO` son la
+misma forma con dos nombres. Re-exportar con alias deja cada página y cada hook
+importando desde donde ya importaban, así que el cambio no toca consumidores.
+
+### `SessionDTO` no es un `Pick`
+
+Se podía escribir `Pick<LoginOutputDTO, "accessToken">` y listo. Es tentador, y
+está mal. El gateway responde solo `{ accessToken }` **porque el refresh token viaja
+en una cookie HttpOnly**, y un `Pick` codificaría esa decisión de transporte como
+una proyección del cliente: el día que el body del gateway cambie, `web` compila
+limpio y dropea el campo en silencio. `SessionDTO` es un DTO más angosto y real,
+con el motivo escrito en el archivo.
+
+### La trampa del grep
+
+Cinco de los seis tipos **ya existían** en core, pero tres viven **dentro de los
+archivos de sus use cases**, no en `application/dtos/`. Buscar solo en `dtos/`
+devuelve la conclusión contraria —"faltan"— y lleva a inventar tipos paralelos que
+duplican exactamente el problema que se está arreglando. Un tipo no está donde uno
+espera; está donde se usó.
+
+### Lo que NO se cambió
+
+`apps/web/src/constants/routes.ts` sigue manteniendo las rutas a mano. Se
+verificaron las siete contra `apps/api-gateway/src/constants/routes.ts` y **no hay
+drift**. Se dejó como está y se le agregó un comentario, porque un comentario que
+dice la verdad es mejor que un refactor sin defecto que loArregle. Nota para el
+que lea: seis vienen de `PublicRoutes` y `ME` viene de **`PrivateRoutes`**, así que
+buscar en un solo enum no encuentra nada.
+
+---
+
+## D-029 — `turbo boundaries` se evaluó y se descartó a propósito
+
+**Decisión.** No configurar `turbo boundaries`.
+
+**Por qué.** La premisa era "nada falla si alguien rompe el boundary". Se verificó
+antes de decidir: **cero deep imports** (`../../packages/*/src/...`) en todo el
+repo. El boundary está intacto hoy por disciplina, no por tooling.
+
+Configurar enforcement para una violación que no existe es agregar configuración
+que hay que mantener —y que alguien va a pisar en el próximo `pnpm add`— sin
+atrapar nada. Si mañana alguien rompe el boundary, ahí se agrega el tag y la regla,
+con el caso real en la mano en vez de una regla especulativa.
+
+**Aprendido.** La tentación es instalar el guard antes del incidente, porque
+"encontrarlo antes" suena a rigor. Pero el costo no es cero: cada pieza de config
+que no previene nada hoy es deuda que alguien tiene que leer, entender y mantener
+antes de agregar la siguiente. La disciplina que ya funciona se documenta; la que
+no existe, todavía no.
+
+## D-030 — `pnpm lint` rojo es un gate de versión del parser, no un bug
+
+**Estado.** `pnpm lint` falla con
+`Error: typescript-eslint does not support TS 7.0` (typescript-eslint#10940,
+soporte para TS >= 7.1).
+
+**El nombre sugiere cobertura que no tiene.** Solo `apps/web` define script `lint`.
+`@repo/core`, `@repo/security`, `@repo/infrastructure` y `api-gateway` **no definen
+ninguno**, así que Turbo los saltea en silencio y `web:lint` es la única tarea que
+alguna vez corre. Agregar el job a CI tal cual sería un verde que miente: 1 de 5.
+
+Esto ya estaba registrado en `auth-tareas-pendientes.md` antes de que se intentara
+arreglar el portón de versión, y es el punto que hace que el bloqueo sea menor de lo
+que parece: si el parser se destrabara mañana, el lint seguiría sin correr en cuatro
+de los cinco paquetes de código.
+
+Verificado ejecutando `pnpm lint` y leyendo la salida: el scope dice `Running lint in
+7 packages`, y la **única** línea `*:lint: $ eslint .` que aparece es la de `web`.
+Los otros seis no emiten nada porque no tienen script.
+
+**No lo causa la unificación de TypeScript.** `@repo/core` nunca declaró su propio
+`typescript`, así que ya resolvía el `7.0.2` de la raíz desde antes. Unificar
+`apps/web` (que estaba en `~6.0.2`) solo extendió la misma falla a un paquete que
+sí pasaba ese gate.
+
+**Ningún gate de CI se rompió.** `ci.yml` define exactamente tres jobs —`build`,
+`check-types`, `test`— y `lint` no es ninguno. Los tres que CI exige están en verde.
+
+**No se arregla subiendo una versión.** Las dos opciones reales son esperar el
+soporte de TS >= 7.1, o apuntar el parser a la API de TS 6 en paralelo. Ambas son
+decisiones de dependencia, no un bump.
+
+**Aprendido.** "El lint está rojo" y "rompí el lint" son afirmaciones distintas, y
+probarlas cuesta un `git stash` de lo que se tocó. Merece la pena porque el ruido
+iba en la dirección contraria: el commit parecía ser la causa de algo que ya estaba
+rojo desde antes. Y el orden de los dos hechos importa: primero se Investmentsá el
+portón de versión, después se notó que la cobertura era de un paquete. Arreglar solo
+el primero produce un `pnpm lint` en verde que sigue mintiendo sobre el repo.
