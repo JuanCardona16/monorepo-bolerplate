@@ -307,5 +307,13 @@ para saber qué sección abrir antes de tocar lo suyo.
   `git fetch main`, `git push main <branch>`.
 - Todo por PR — `main` protegida, pushes directos rechazados.
   `gh pr merge <n> --merge` (merge commit, sin squash/rebase).
+- **Política de PRs y merge (standing):** por cada tarea se crea su PR. Si los
+  checks están en verde y no es sensible, se mergea sin preguntar. Si es
+  sensible o requiere revisión del usuario, se sube el PR y se avisa para que
+  lo revise y mergee él.
+- **Sensible =** comportamiento de auth o seguridad, datos reales o migraciones
+  en producción, secretos/credenciales, cambios a CI o a la protección de
+  `main`, cambios de contrato (DTOs, rutas). Docs, tests y refactors internos
+  con checks verdes no son sensibles.
 - Auth remoto con `GITHUB_TOKEN` del entorno; **cada shell es un proceso fresco**:
   re-exportarlo en cada comando.
