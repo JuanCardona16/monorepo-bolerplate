@@ -20,13 +20,14 @@ Reglas:
 > Última revisión 2026-10-03 contra el árbol vigente. La parte HTTP vive en
 > `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
 
-## 🟡 Decisiones de producto, no técnicas
+## 🟢 Listo para hacer — aprobado y desbloqueado
 
-- [ ] **TK-06 — "Recordarme" real.** La web no ofrece el control: la duración la decide el
-  servidor y el cliente no puede cambiarla (D-018). Hacerlo de verdad exige que el
-  cliente le diga a la API cuánto vive la cookie — postura de seguridad de sesión,
-  no detalle de UI.
-  Verificar: decisión registrada en Engram; si es sí, issue con el diseño.
+- [ ] **TK-10 — "Recordarme" real (diseño aprobado TK-06).** Login acepta `rememberMe?: boolean`
+  (default `false` = default seguro). Servidor: dos vidas de cookie refresh — corta
+  (sesión/24h, constante a definir) vs larga de 30d (`REFRESH_COOKIE_MAX_AGE_MS` actual).
+  Cookie sigue HttpOnly; rotación y revocación intactas. Frontend: vuelve el checkbox
+  real (el test que aserta su ausencia se actualiza a propósito) + tests de ambas vidas.
+  Verificar: desmarcado = sesión corta, marcado = 30d, por defecto corta.
 
 ## 🟠 Deuda técnica
 
