@@ -61,6 +61,6 @@ pnpm test
 | `docs/architecture.md` | Dónde vive cada cosa y cómo navegarlo |
 | `docs/traps.md` | Trampas ya pagadas, por área |
 | `docs/decisions.md` → Engram | Por qué el código es como es (proyecto `monorepo-bolerplate`, topics `decisions/D-001..D-030`) |
-| `docs/auth-tareas-pendientes.md` | Qué de auth quedó pendiente |
+| `docs/tasks.md` | Backlog vivo: solo lo pendiente, por estado |
 | `design-system/auth-app/MASTER.md` | Diseño visual de la app de auth (fuera del workspace) |
 | `odd/tasks/` | Bitácoras de trabajo por feature |

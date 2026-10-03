@@ -34,6 +34,11 @@ porque AGENTS.md mezcla referencia técnica con reglas de conducta sin jerarquí
   referencias actualizadas en AGENTS/overview/architecture/traps/README/auth-tareas.
   Nota: `.engram/config.json` necesitó `project_name` además de `project`
   (el MCP pedía `project_name`; los repos viejos solo tienen `project`).
+- [x] T8: `docs/auth-tareas-pendientes.md` → `docs/tasks.md` (vía `git mv`, historial
+  preservado). Solo lo pendiente vivo (10 ítems por estado: bloqueado/producto/deuda),
+  cada uno con cómo verificarlo. Salió lo completado (a git), lo duplicado (D-030,
+  traps.md) y lo muerto (`.next/**`, hecho en `a77892d`). Categorizar por dominio
+  descartado: repo 100% auth, el eje real es quién desbloquea.
 
 ## Decisiones pendientes
 - Reglas de comportamiento exactas que el usuario espera (1 pregunta hecha, esperando respuesta).
