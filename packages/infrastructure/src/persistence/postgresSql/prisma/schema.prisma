@@ -26,6 +26,9 @@ model RefreshTokenSchema {
   roles     String[]  @default([])
   expiresAt DateTime  @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
+  // Explicit 30-day opt-in. Defaults true so pre-existing rows keep the
+  // lifetime they were issued with; new short sessions store false.
+  rememberMe Boolean  @default(true) @map("remember_me")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
