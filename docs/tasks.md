@@ -24,18 +24,9 @@ Reglas:
 
 Ninguno de estos lo puede cerrar el agente: necesitan credenciales, decisiones o
 acciones tuyas. Cada uno dice cómo confirmar que se hizo.
-- [ ] **TK-02 — Variables de email en el entorno real**: `RESEND_API_KEY`, `EMAIL_FROM`,
-  `PASSWORD_RESET_URL`. Opcionales a propósito (D-023), pero sin
-  `PASSWORD_RESET_URL` los emails llevan links muertos a localhost.
-  Verificar: pedir un reset en prod y que el link apunte al dominio real.
-- [ ] **TK-03 — Login con Google.** Requiere proyecto de Google Cloud tuyo. La UI ya no lo
-  ofrece; `CLIENT_GOOGLE_ID/SECRET` se eliminaron (D-017) y se re-agregan cuando
-  la feature exista.
-  Verificar: botón visible + login completo contra Google.
+
 - [ ] **TK-04 — Caché remoto de Turbo.** Requiere token.
   Verificar: `turbo build` reporta hits remotos en CI.
-- [ ] **TK-05 — Rotar el token de GitHub** usado durante el desarrollo.
-  Verificar: token viejo revocado, CI verde con el nuevo.
 
 ## 🟡 Decisiones de producto, no técnicas
 
@@ -58,3 +49,17 @@ acciones tuyas. Cada uno dice cómo confirmar que se hizo.
   importarse y pasa `DATABASE_URL` sin validar. Hoy ningún test lo importa.
   Verificar: test que lo importa en entorno sin `.env.local` y falla ruidoso o
   pasa limpio.
+
+## 🔵 Futuras — diferidas por el usuario
+
+No están en el camino actual; cuando se activen vuelven a su sección por estado
+(conservando su ID, que nunca cambia).
+
+- [ ] **TK-02 — Variables de email en el entorno real**: `RESEND_API_KEY`, `EMAIL_FROM`,
+  `PASSWORD_RESET_URL`. Opcionales a propósito (D-023), pero sin
+  `PASSWORD_RESET_URL` los emails llevan links muertos a localhost.
+  Verificar: pedir un reset en prod y que el link apunte al dominio real.
+- [ ] **TK-03 — Login con Google.** Requiere proyecto de Google Cloud tuyo. La UI ya no lo
+  ofrece; `CLIENT_GOOGLE_ID/SECRET` se eliminaron (D-017) y se re-agregan cuando
+  la feature exista.
+  Verificar: botón visible + login completo contra Google.
