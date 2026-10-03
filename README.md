@@ -1,159 +1,65 @@
-# Turborepo starter
+# monorepo-bolerplate
 
-This Turborepo starter is maintained by the Turborepo core team.
+An end-to-end authentication monorepo: pure-TypeScript auth domain, an Express API
+that serves it, and a React client that consumes it. Built as a reusable starter
+with every hard-won lesson written down — the `docs/` folder records not just
+what the code does, but why it does it that way.
 
-## Using this example
+## What's inside
 
-Run the following command:
+| App / Package | Description |
+|---|---|
+| `apps/api-gateway` | Express 5 API: auth routes, Zod validation, OpenAPI + Swagger UI |
+| `apps/web` | React 19 + Vite 8 + Tailwind 4 client (login, register, password reset, profile) |
+| `@repo/core` | Framework-free auth domain: entities, value objects, use cases, DTOs |
+| `@repo/security` | Core port implementations: bcrypt hashing, JWT, refresh-token hashing |
+| `@repo/infrastructure` | Prisma Postgres adapters + email sender |
+| `@repo/typescript-config` / `@repo/eslint-config` | Shared TS and ESLint bases |
 
-```sh
-npx create-turbo@latest
-```
+Auth covers register, login, token refresh with rotation and revocation, logout,
+profile, role management, password reset, and a documented OpenAPI spec.
 
-## What's inside?
+## Quickstart
 
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Requirements: `pnpm@12.5.1`, `node >= 24`, a Postgres 17 database.
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
 ```
 
-Without global `turbo`, use your package manager:
+- API dev server: `pnpm --filter api-gateway dev` (needs
+  `apps/api-gateway/.env.local` with `DATABASE_URL` plus the required secrets).
+- Web dev server: `pnpm --filter web dev`.
+- Database: apply migrations with
+  `pnpm --filter @repo/infrastructure prisma:migrate:deploy`.
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
-```
+## Scripts
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+All root scripts run through Turbo:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+| Command | What it runs |
+|---|---|
+| `pnpm build` | `turbo run build` |
+| `pnpm dev` | `turbo run dev` |
+| `pnpm check-types` | `turbo run check-types` |
+| `pnpm test` | `turbo run test` (646 tests across 5 packages) |
+| `pnpm lint` | `turbo run lint` — currently blocked, see below |
 
-```sh
-turbo build --filter=docs
-```
+## Testing & CI
 
-Without global `turbo`:
+CI runs three required checks on `main`: `build`, `check-types`, and `test` (with
+a pinned `postgres:17-alpine` service so the 35 integration tests execute for
+real instead of silently skipping).
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+Known limitation: `pnpm lint` is red repo-wide because `typescript-eslint` does
+not yet support TypeScript 7.0 (upstream tracking issue
+typescript-eslint#10940) — a parser version gate, not a code defect. It is not a
+CI gate.
 
-### Develop
+## Docs
 
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+- `docs/overview.md` — project summary, stack, dependencies, how to run it
+- `docs/architecture.md` — where everything lives and how to navigate it
+- `docs/decisions.md` — decision log: the reasoning behind the code

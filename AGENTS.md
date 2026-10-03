@@ -1,26 +1,80 @@
 # AGENTS.md
 
-> README.md is the stale Turborepo starter (mentions a `web` package and `@repo/ui` that no longer exist). Trust manifests and `src/` below, not README prose.
+> Lectura en orden: este archivo dice **cómo trabajar**; `docs/overview.md` dice
+> **qué es el proyecto**; `docs/architecture.md` dice **dónde vive cada cosa**;
+> `docs/decisions.md` dice **por qué**. Si algo de lo técnico contradice a los
+> manifests o a `src/`, mandan los manifests y `src/`.
+
+## 0. Cómo trabajar en este repo
+
+Estas reglas están primero a propósito: el desvío más caro hasta ahora fue de
+autonomía, no de código.
+
+### Cuándo avanzar solo y cuándo frenar
+
+**Avanzar solo** (sin preguntar):
+
+- Lo pedido es explícito y cabe en el alcance: implementar, corregir o documentar
+  dentro de los archivos y el comportamiento nombrados.
+- Verificar con gates reales (`build`, `check-types`, `test`) y reportar el resultado.
+- Commitear en la rama de trabajo con el formato de `## Git`.
+
+**Frenar y preguntar** (una sola pregunta, después esperar):
+
+- El alcance es ambiguo o condicional ("si…", "quizás", "como quieras").
+- La tarea implica una decisión de producto o arquitectura no registrada en
+  `docs/decisions.md` (un default nuevo, un campo nuevo en un DTO, un cambio de
+  transporte como cookie vs body).
+- El trabajo se expandiría a archivos fuera de lo pedido.
+- Hay que pushear, abrir un PR, mergear, borrar datos reales o tocar credenciales,
+  secretos o infraestructura.
+- La evidencia contradice lo pedido (el código dice otra cosa que el pedido).
+
+**Nunca**:
+
+- Asumir la respuesta y seguir como si el usuario la hubiera dado.
+- Afirmar algo del código sin haberlo leído o ejecutado (ver `Verificar antes
+  de afirmar`).
+- Expandir el alcance "de paso" — ni un fix chico fuera de lo pedido sin avisar.
+- Presentar menús de opciones salvo bifurcación real con tradeoffs.
+
+### Verificar antes de afirmar
+
+- Toda afirmación técnica se cruza contra manifests (`package.json`,
+  `turbo.json`, `pnpm-workspace.yaml`, `ci.yml`) o `src/` antes de escribirse.
+- `pnpm build`, `pnpm check-types` y `pnpm test` son los gates reales; un verde
+  local sin correrlos es una opinión, no una verificación.
+- Si una herramienta delegada falla o no existe en este entorno, se dice
+  explícitamente y se sigue en directo — nunca se finge la delegación.
+
+### Comunicación
+
+- Respuestas cortas en español rioplatense. Mínimo útil primero; expandir solo si
+  lo piden o la tarea lo exige.
+- Una pregunta por vez. Después de preguntar, frenar y esperar.
+- Los artefactos técnicos (código, UI copy, commits, docs de `docs/`) van en
+  inglés salvo que el archivo ya esté en español — se sigue el idioma del archivo.
 
 ## Setup
 
-- `pnpm@12.5.1`, `node >= 24`. Always use `pnpm`; do not use npm/yarn.
-- Workspace roots (`pnpm-workspace.yaml`): `apps/*`, `packages/*`.
-- Install: `pnpm install`. Build order matters: dependencies first via `turbo run build` (`build.dependsOn: ["^build"]` in `turbo.json`).
+- `pnpm@12.5.1`, `node >= 24`. Siempre `pnpm`; nada de npm/yarn.
+- Raíces del workspace (`pnpm-workspace.yaml`): `apps/*`, `packages/*`.
+- Instalación: `pnpm install`. El orden de build importa: dependencias primero vía
+  `turbo run build` (`build.dependsOn: ["^build"]` en `turbo.json`).
 
-## Commands
+## Comandos
 
-Root (`package.json` — all via Turbo):
+Raíz (`package.json` — todo vía Turbo):
 
 ```sh
 pnpm build        # turbo run build
-pnpm dev          # turbo run dev (persistent, cache: false)
-pnpm lint         # turbo run lint — BROKEN, see Verification
+pnpm dev          # turbo run dev (persistente, cache: false)
+pnpm lint         # turbo run lint — ROTO, ver Gates
 pnpm check-types  # turbo run check-types
-pnpm format       # prettier --write "**/*.{ts,tsx,md}" (no config file — defaults)
+pnpm format       # prettier --write "**/*.{ts,tsx,md}" (sin config — defaults)
 ```
 
-Single package (preferred for focused work):
+Por paquete (preferido para trabajo enfocado):
 
 ```sh
 pnpm --filter @repo/core build
@@ -29,105 +83,265 @@ pnpm --filter @repo/infrastructure build
 turbo build --filter=@repo/core
 ```
 
-Library packages (`core`, `security`, `infrastructure`) each define:
+Librerías (`core`, `security`, `infrastructure`):
 
-- `build:js` = `tsup`, `build:types` = `tsc`, `build` = `pnpm build:js && pnpm build:types` — run in that order.
+- `build:js` = `tsup`, `build:types` = `tsc`, `build` = `pnpm build:js && pnpm build:types` — en ese orden.
 - `dev` = `tsup --watch --onSuccess "pnpm run build:types"`.
 
-## Verification
+## Gates de verificación
 
-- **Vitest 4.1.10** is the test runner, one project per testable package (5 projects: `@repo/core`, `@repo/security`, `@repo/infrastructure`, `api-gateway`, `web`) declared via `test.projects` in the root `vitest.config.ts`. **`vitest.workspace.ts` is a dead file** — that concept was removed in Vitest 3+. See the current totals further down; older counts in this file that predate `apps/web` are deleted rather than kept alongside.
-- `noUncheckedIndexedAccess` is on, so `const [first] = arr` does not typecheck. Use `arr[0]` with optional access in tests.
-- `packages/core`, `packages/security` and `packages/infrastructure` tsconfigs have no `include`, so tsc globs every `.ts`. All three exclude `src/**/__tests__/**` to keep compiled tests out of the published `dist/`.
-- **`.github/workflows/ci.yml` exists** — three parallel jobs (`build`, `check-types`, `test`), no `needs` between them, `concurrency` cancels superseded runs. All three are **required status checks on `main`** (verified green, run `36524305417`). The `test` job runs a **`postgres:17-alpine` service container** (pinned, not `latest`: a major bump can change collation and redden a build for reasons unrelated to the code) and applies migrations via `pnpm --filter @repo/infrastructure prisma:migrate:deploy` *before* `pnpm test` — without the schema every query fails with `P2021 "table does not exist"`, which reads as a broken repository rather than a missing migration. The container is load-bearing: the integration suites throw when `CI=true` and `DATABASE_URL` is unset, so removing it fails the build loudly instead of quietly halving coverage.
-- `main` is protected: required checks, `strict: true`, `enforce_admins: true`, **0 approving reviews** (solo developer), force-push and deletion blocked. Push straight to `main` is rejected — go through a PR.
-- Closest to a standalone typecheck: `pnpm --filter <pkg> build:types` (`tsc` with `declaration: true`). Root `check-types` now runs **7 tasks** (4 typechecks + 3 dependency builds): each library has a `tsconfig.test.json` with `noEmit: true` that type-checks `src/**/*` including tests, because `tsconfig.json` excludes `__tests__` from emit.
-- `turbo.json`: `check-types` dependsOn `^build` (a package's `check-types` needs its dependencies' `dist/*.d.ts` to resolve `@repo/core/authentication`; without it the job fails on a clean runner but passes locally). `build.outputs` includes `dist/**` — it previously only listed `.next/**`, so no library build was ever cached. The **`test` task declares `env: ["DATABASE_URL"]` and `inputs: [".env*"]`**: undeclared, Turbo filtered the variable out and the 35 integration tests skipped themselves on *every* run, not just in CI — they were unreachable through `pnpm test` even with a database running. The `test` task also has **`cache: false`**: it depends on a live database whose contents no cache key can see, so a replayed "98 passed" is a claim about a database that no longer exists. Scoped to `test` on purpose — a `TURBO_FORCE` in the workflow would also disable the `build` cache, which is the expensive part.
-- **No package uses `--passWithNoTests` any more.** An empty suite in any workspace package is now a CI failure, not a false green. Do not add the flag back.
-- **`pnpm lint` is RED and NOT a code defect — and it covers only 1 of 5 code packages.** It fails with `Error: typescript-eslint does not support TS 7.0.`: a hard version gate inside the parser, tracked upstream at typescript-eslint#10940 (support for TS >= 7.1). **Do not fix it by bumping a version** — the only real options are waiting for >= 7.1 or pointing the parser at the side-by-side TS 6 API.
-  - **The name implies coverage it does not have.** Only `apps/web` defines a `lint` script. `@repo/core`, `@repo/security`, `@repo/infrastructure` and `api-gateway` define **none**, so Turbo skips them silently and `web:lint` is the only task that ever runs. Even a green `pnpm lint` would mean 1 of 5, not the repo.
-  - **Not introduced by the TypeScript unification.** `@repo/core` never declared its own `typescript`, so it already resolved the root's 7.0.2 before any of it.
-  - **No CI gate is red.** `.github/workflows/ci.yml` defines exactly three jobs — `build`, `check-types`, `test`. `lint` is not one of them.
-  - `pnpm peers check` also exits 1 for the same reason: the parser wants `typescript: '>=4.8.4 <6.1.0'`.
-  - The trustworthy gates today are `pnpm build`, `pnpm check-types`, and `pnpm test`. Treat a green run of those three as the real signal.
-- **646 tests**: `@repo/core` 210, `api-gateway` 166, `web` 133, `@repo/security` 39, `@repo/infrastructure` 98. Run the gate **twice**: once without `DATABASE_URL` and once with it. The 35 integration tests in `infrastructure` are gated on `DATABASE_URL`: they **skip** when it is absent and **throw** when `CI=true` and it is absent. Locally a skip is fine; in CI it means the Postgres service container or the env wiring broke, so it fails loudly instead of reporting a green build that ran 35 fewer tests.
-- **`apiClient` normalizes a rejected `fetch` into an `ApiError`** (`NETWORK_ERROR`, status `0`). Every page renders its error only on `instanceof ApiError`, so a raw `TypeError` from a dropped connection used to render **nothing**: the button reset to idle and the user got no feedback. An `AbortError` is deliberately passed through unchanged — a cancellation is not a connection problem, and saying otherwise would be a lie.
-- `LoginPage` and `RegisterPage` render errors with the same `mutation.error instanceof ApiError` pattern. They work now only because the client normalizes; a new page that catches the raw error itself would reintroduce the bug.
-- **Password reset** (`POST /api/v1/auth/password/forgot|reset`). `forgot` answers **byte-identically** for a known and an unknown address, and the use case swallows *every* error from the email sender, not just `EmailSendError`: re-throwing an unexpected one would answer 500 for a real account and 200 for an unknown one, turning any adapter bug into an enumeration oracle. The reset link carries the token in the URL **fragment**, which browsers never transmit — it cannot reach the access log, a proxy log, or the `Referer` of the next page.
-- **Reset env vars are optional on purpose** (`RESEND_API_KEY`, `PASSWORD_RESET_URL`, `EMAIL_FROM`): a `required()` would stop login from booting because a password was forgotten somewhere. But optional must not mean silent — `config/env/index.ts` logs a warning per missing variable **in production only**, because `PASSWORD_RESET_URL` falls back to `http://localhost:5173`, and a deployment that forgets it would otherwise deliver valid reset emails containing dead links with nothing reporting it.
-- **`docs/decisions.md` is the decision log.** Read it before changing auth behaviour: it records why the refresh replay revokes all sessions, why `Email` normalizes in the domain, why the cookie is `lax`, and the traps already paid for.
-- **`Email` normalizes** (`trim().toLowerCase()`) before validating, so surrounding whitespace is accepted and trimmed rather than rejected, and casing never reaches storage. A functional unique index on `lower(email)` backs it at the database level. Both layers must stay in sync: removing the normalization without dropping the index would break inserts.
-- `statusForCode` uses `Object.hasOwn` on purpose. A bare `STATUS_BY_CODE[code] ?? 500` resolves inherited `Object.prototype` keys (`constructor`, `toString`) to functions, and that value would reach `res.status()`.
-- The Prisma repository tests need a real database: each suite is gated on `DATABASE_URL`, so those tests **skip locally when it is absent and run when it is set** (see the 35-test rule above for the CI behaviour). Isolation is per unique key (`randomUUID`), never `TRUNCATE` or a global `deleteMany`, so the suite never deletes rows the app created.
-- `apps/web` uses `@testing-library/react` with `globals: false`, so `src/test/setup.ts` registers `cleanup()` in an `afterEach` (RTL cannot detect the global hook otherwise). Its `tsconfig.app.json` has `include: ["src"]`, so `tsc` type-checks the web tests with no separate config.
-- **A `__tests__` directory cannot import anything from outside itself once `tsconfig.json` excludes it.** In `api-gateway`, `src/**/__tests__/**` is excluded and Vitest resolves modules through the tsconfig, so a test inside `src/core/__tests__/` cannot import `src/constants/...`; it fails with `Cannot find module '/constants/index.js'` (note the leading slash). A test in a top-level `src/__tests__/` resolves fine. Put shared helpers there, or assert on literal values.
-- In `apps/web`, the `Authorization` header does NOT come from the zustand store: `apiClient` reads it from an accessor that `Bootstrap` installs via `configureApi`. `main.tsx` imports `RouterProvider` from `react-router/dom` while components consume the `react-router` entry context, which is a different module instance and breaks routing tests.
-- Two known, deliberate data losses in the mappers, pinned by tests: `createdAt`/`updatedAt` are dropped (the domain entities have nowhere to keep them, Prisma refills them on write), and duplicate roles collapse because the entities use `Set<string>` against a `String[]` column.
-- **Two `.env.local` files, and the app uses the package one.** `apps/api-gateway/.env.local` holds the real `DATABASE_URL` (Neon, pooled via PgBouncer, `sslmode=require`) and `PORT=3001`. The root `.env.local` points at a local Postgres 17.11 on `127.0.0.1:5432` that the gateway **never reads**; it exists for the `@repo/infrastructure` integration tests. Editing the root one will not change where the app stores data.
-- Prisma migrations live in `packages/infrastructure/src/persistence/postgresSql/prisma/migrations/`. Scripts: `pnpm --filter @repo/infrastructure prisma:migrate:dev|deploy|status`. **Both migrations are applied to both databases** (local Postgres 17.11 and Neon) as of 2026-09-29: `20260927174808_init_auth` and `20260929150000_email_normalization_index`. Prisma requires the file inside a migration folder to be named exactly `migration.sql`; any other name makes it unreadable (`P3015`). **The `prisma:migrate:*` scripts pass `--config` themselves** — that is why they work; `prisma generate` does not need it, which is why a missing `--config` went unnoticed until CI actually ran a migration. **To migrate the database the app actually uses (Neon), export the gateway's `DATABASE_URL`**: `prisma.config.ts` reads the *root* `.env.local`, so a bare `$env:DATABASE_URL` pointing at Neon is what makes the deploy target the right database.
-- Gateway deploy knobs, all read in `config/env/index.ts` and validated at boot: `TRUST_PROXY_HOPS` (default `0`; set to the real hop count behind nginx/Cloudflare, or every client shares one IP and the global rate limit locks everyone out), `REFRESH_COOKIE_SAME_SITE` (default `lax`), `REFRESH_COOKIE_SECURE` (defaults to true when `NODE_ENV=production`), `ACCESS_LOG_IPS` (default `false`; an IP is personal data under GDPR and an access log is exactly the kind of store that quietly accumulates it forever).
-- **Access log**: `createRequestLogger` in `core/middleware/logger/`, mounted **first** in `app.ts` — after `helmet` or the rate limiter it would miss 429s, after the routes it would miss 404s. It logs `req.path` and never `req.originalUrl`, so the query string cannot leak; never the body, never `Authorization`; client IP only when `ACCESS_LOG_IPS=true`.
-- **Express trap: `req.url` is rewritten while dispatching into a mounted router** and restored afterwards, so reading `req.path` on `res.on("finish")` yields the router-relative path (`/login`, not `/api/v1/auth/login`). `requestLogger` captures `method`/`path`/`ip` eagerly for this reason. The unit test with fake objects cannot catch it — only the integration suite in `src/__tests__/accessLog.test.ts` did.
-- OpenAPI spec and Swagger UI live at `GET /api/docs` (a sibling of `/api/v1`, so the raw document stays out of the API envelope). `GET /api/docs/openapi.json` is the spec, `GET /api/docs/info` is the machine-readable discovery payload, and `GET /api/docs/` renders the UI. Knobs: `DOCS_ENABLED` (default ON in dev, **OFF in production**, because Swagger UI is a browsable inventory of every endpoint and error code) and `OPENAPI_SERVER_URL` (default `/`; set it or "Try it out" calls the wrong origin).
-- **`@scarf/scarf` is explicitly NOT approved** in `pnpm-workspace.yaml`. It is a transitive dep of `swagger-ui-express` (via `swagger-ui-dist`) and its postinstall phones home to `scarf.sh` to report that this project installed the package. `"@scarf/scarf": false` keeps the UI working while blocking the telemetry. Re-check that list whenever a dependency is added: `pnpm add` can run a new postinstall **without** the strictDepBuilds check firing.
-- `swaggerUi.serve` is what serves `swagger-ui.css` and `swagger-ui-bundle.js`; `swaggerUi.setup()` renders **only the HTML**. Without `serve`, the page loads and every one of its own assets answers `200` with the HTML page again — a blank screen in the browser while every status-code check reports green. `docs.spec.test.ts` asserts the CSS `content-type` for exactly that reason.
-- Mount a docs handler with `get("/path")`, never with `use("/", handler)`. `use` matches **every** path under the mount, so a UI handler registered that way also answers `/openapi.json` — with the UI's HTML and a 200. Mount order relative to the UI is *not* what matters: `get("/")` matches only the mount root and cannot shadow a sibling `get("/openapi.json")`. Verified by mutation, because the opposite is the natural guess.
-- Role management: `PUT /api/v1/auth/users/:uuid/roles` replaces the target's whole role set and revokes their sessions. Guarded by `requireRole("admin")` after `createAuthorize`.
-- **First admin comes from a script, not a route**: `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email> [--remove]`. The route requires a role the caller does not have, so without a path that bypasses the API the first admin could never exist. Needs `DATABASE_URL` exported (see the Neon-vs-local trap above). It normalizes the email through `Email`, uses a `Set` for roles so re-running never duplicates, and revokes the user's active refresh tokens.
-- **`api-gateway` sets its test env in `src/test/setupEnv.ts` (a `setupFiles` entry), not per suite.** Three suites in a row failed on CI only with `Missing required environment variable: TOKEN_SECRET_KEY`, because they imported something reaching `config/env/index.ts` — whose `required()` runs **at import time**, before any `beforeAll` or `vi.stubEnv` can run. A developer's `.env.local` is what was hiding it. A setup file runs before any test module is imported, so it removes the trap; do not go back to setting these per suite. Verify CI parity by **moving `.env.local` aside** and running the suite, not by trusting a green local run.
-- **`vi.mock` resolves its specifier from the module under test, not from the test file.** Writing `../client.js` when the script imports `../../client.js` makes Vitest look for a different file, the mock silently does not apply, and a unit suite ends up **connecting to a real database**. Same class of trap as the nested `__tests__` one above.
-- **Prisma `update`/`updateMany` take ONE argument object** (`{ where, data, select }`), not `(where, data)`. Asserting on `calls[1].data` yields `undefined` in silence. A suite with multiple cases also needs `vi.clearAllMocks()` in `beforeEach`, or `not.toHaveBeenCalled()` fails counting earlier tests.
-- `@repo/infrastructure` has a `postinstall` hook that generates the Prisma client, so CI has no manual generate step. It depends on the `allowBuilds` entries above; without them the hook itself would be blocked. It runs only on `install`, never on `build`, and a plain `pnpm install` will not re-run it when the dependency tree is unchanged — use `pnpm install --force`.
-- Full local gate: `pnpm install --frozen-lockfile` → `pnpm build` → `pnpm test`.
+- **Vitest 4.1.10**, un proyecto por paquete testeable (5: `@repo/core`,
+  `@repo/security`, `@repo/infrastructure`, `api-gateway`, `web`) vía
+  `test.projects` en el `vitest.config.ts` raíz. **`vitest.workspace.ts` es un
+  archivo muerto** — ese concepto se eliminó en Vitest 3+.
+- **646 tests**: `@repo/core` 210, `api-gateway` 166, `web` 133,
+  `@repo/security` 39, `@repo/infrastructure` 98. Correr el gate **dos veces**:
+  sin `DATABASE_URL` y con él. Los 35 tests de integración de `infrastructure`
+  están gated: hacen **skip** sin la variable y hacen **throw** con `CI=true` sin
+  ella (en CI significa que el service container o el env wiring se rompió).
+- **`.github/workflows/ci.yml`**: tres jobs paralelos (`build`, `check-types`,
+  `test`), sin `needs`, `concurrency` cancela runs superados. Los tres son
+  **required status checks en `main`**. El job `test` levanta un service
+  container **`postgres:17-alpine`** (pineado, no `latest`) y aplica migraciones
+  con `pnpm --filter @repo/infrastructure prisma:migrate:deploy` *antes* de
+  `pnpm test` — sin schema cada query falla con `P2021`, que se lee como repo
+  roto en vez de migración faltante.
+- `main` está protegida: checks requeridos, `strict: true`, `enforce_admins: true`,
+  **0 aprobaciones** (solo developer), force-push y borrado bloqueados. Push
+  directo a `main` rechazado — todo por PR.
+- Lo más cercano a un typecheck standalone: `pnpm --filter <pkg> build:types`
+  (`tsc` con `declaration: true`). El `check-types` raíz corre **7 tasks**
+  (4 typechecks + 3 builds de dependencias): cada librería tiene un
+  `tsconfig.test.json` con `noEmit: true` que type-checkea `src/**/*` incluyendo
+  tests, porque `tsconfig.json` excluye `__tests__` del emit.
+- `turbo.json`: `check-types` dependsOn `^build` (el `check-types` de un paquete
+  necesita los `dist/*.d.ts` de sus dependencias). `build.outputs` incluye
+  `dist/**`. El task `test` declara `env: ["DATABASE_URL"]` e
+  `inputs: [".env*"]` (sin declarar, Turbo filtraba la variable y los 35 tests de
+  integración se skipeaban en *cada* run) y tiene **`cache: false`** (depende de
+  una DB viva cuyo contenido ninguna cache key puede ver).
+- **Ningún paquete usa `--passWithNoTests`.** Una suite vacía es failure de CI, no
+  verde falso. No re-agregar el flag.
+- **`pnpm lint` está ROJO y NO es defecto de código — y cubre solo 1 de 5
+  paquetes.** Falla con `Error: typescript-eslint does not support TS 7.0`
+  (tracking typescript-eslint#10940, soporte para TS >= 7.1). **No se arregla
+  subiendo una versión**: esperar >= 7.1 o apuntar el parser a la API de TS 6
+  side-by-side.
+  - Solo `apps/web` define script `lint`; los cuatro paquetes de backend **no
+    definen ninguno**, así que Turbo los saltea en silencio. Un `pnpm lint` en
+    verde significaría 1 de 5, no el repo.
+  - **No CI gate en rojo**: `ci.yml` tiene exactamente tres jobs y `lint` no es
+    uno. `pnpm peers check` también sale 1 por lo mismo (el parser pide
+    `typescript: '>=4.8.4 <6.1.0'`).
+  - Los gates confiables hoy: `pnpm build`, `pnpm check-types`, `pnpm test`.
+- Gate local completo: `pnpm install --frozen-lockfile` → `pnpm build` → `pnpm test`.
 
-### pnpm gotcha that will waste your time again
+### Gotcha de pnpm que va a hacer perder tiempo otra vez
 
-`pnpm install` passing locally proves nothing about CI. A populated `node_modules` means pnpm never re-evaluates postinstall scripts, which is exactly the check that fails on a clean runner. To actually exercise build scripts, run `pnpm rebuild`.
+`pnpm install` pasando en local no prueba nada sobre CI. Un `node_modules`
+poblado hace que pnpm nunca re-evalúe postinstall scripts, que es justo el check
+que falla en un runner limpio. Para ejercitar build scripts de verdad: `pnpm rebuild`.
 
-- `strictDepBuilds` defaults to `true`, so an unapproved postinstall aborts install with `ERR_PNPM_IGNORED_BUILDS`.
-- Approved packages are declared in **`pnpm-workspace.yaml`** under `allowBuilds`, currently `@prisma/engines`, `bcrypt`, `esbuild`, `prisma`.
-- `onlyBuiltDependencies` is **removed** in pnpm v11 and the `pnpm` field in `package.json` is no longer read at all. Both are dead ends. pnpm 12 settings live in `pnpm-workspace.yaml`.
-- `dangerouslyAllowAllBuilds` is deliberately not used: it would let unreviewed transitive dependencies run scripts.
+- `strictDepBuilds` default `true`: un postinstall no aprobado aborta con
+  `ERR_PNPM_IGNORED_BUILDS`.
+- Aprobados en **`pnpm-workspace.yaml`** bajo `allowBuilds`: `@prisma/engines`,
+  `bcrypt`, `esbuild`, `prisma`.
+- `onlyBuiltDependencies` se **eliminó** en pnpm v11 y el campo `pnpm` en
+  `package.json` ya no se lee. Ambos son callejones sin salida; settings de
+  pnpm 12 viven en `pnpm-workspace.yaml`.
+- `dangerouslyAllowAllBuilds` deliberadamente no usado: dejaría correr scripts de
+  dependencias transitivas sin revisar.
 
+## Mapa (resumen — el detalle vive en `docs/architecture.md`)
 
-## Layout (real code, not README)
+| Paquete | Qué es | Deps de workspace |
+|---|---|---|
+| `apps/api-gateway` | App Express 5, compone todo (`src/core/di/container.ts`) | `core`, `security`, `infrastructure` |
+| `apps/web` | Cliente React 19 + Vite 8 + Tailwind 4 (`web`, no `@repo/web`) | `core` solo como devDep solo-tipos |
+| `packages/core` | Dominio de auth, sin deps runtime | ninguna |
+| `packages/security` | Implementa ports de core (bcrypt, JWT, sha256, ids) | `core` |
+| `packages/infrastructure` | Adaptadores Prisma Postgres + email | `core` |
+| `packages/typescript-config` | Solo `base.json` activo; resto sin uso | — |
+| `packages/eslint-config` | Consumir vía `./base` | — |
 
-- `apps/api-gateway/` — Express 5 app (user-owned style, see `## Api-gateway`). Composition root at `src/core/di/container.ts` wires every adapter; controllers stay thin and pull use cases from `@repo/core`.
-- `apps/web/` — React 19 + Vite 8 + Tailwind 4 client (package name is plain `web`, not `@repo/web`). TanStack Query for server state, zustand for auth store, react-hook-form for forms. **It declares zero `workspace:*` dependencies**, so nothing in the API contract is enforced at build time — drift is caught by tests and review, not by types.
-- There is **no Next.js app** and none is planned; `turbo.json` `build.outputs` still lists `.next/**` from the starter and is harmless dead config.
-- `docs/` holds `decisions.md` (decision log) and `auth-tareas-pendientes.md`.
-- `tools/` holds `gh.ps1` + `README.md` (a `gh` helper), not an empty directory.
-- `design-system/auth-app/MASTER.md` sits **outside** the pnpm workspace globs (`apps/*`, `packages/*`), so Turbo never builds, lints, or tests it. Treat it as design documentation only.
-- `packages/core` (`@repo/core`) — auth domain only. Entrypoints: `src/index.ts` (re-exports `authentication/`), `src/authentication/{application,domain}/`. Exports `.` and `./authentication`. No runtime deps. Typed domain errors carry `code` (no HTTP status — gateway maps it).
-- `packages/security` (`@repo/security`) — implements core ports: `BcryptPasswordHasher`, `JwtTokenProvider`, `Sha256RefreshTokenHasher`, `CryptoIdGenerator`. Depends on `@repo/core` + `bcrypt`, `jsonwebtoken`.
-- `packages/infrastructure` (`@repo/infrastructure`) — `src/persistence/postgresSql/` (Prisma adapters + mappers + `PrismaAuthRepository`/`PrismaRefreshTokenRepository`); `cache/`, `external/`, `shared/`, `config/` are empty extension points (`mongodb/`, `messaging/` deleted; hollow `exports` removed — only `.`, `./persistence/postgresSql` and `./email` remain). Deps: `prisma@7.10`, `@prisma/adapter-pg`, `@prisma/client`, `pg`, `dotenv`, `tsx`, `@repo/core`. Prisma client generates to `prisma/generated/` (gitignored) via a `postinstall` hook, so a fresh clone or a clean CI checkout needs no manual step. Run `pnpm --filter @repo/infrastructure prisma:generate` to regenerate by hand. **The hook only runs on `install`, not on `build`**: after deleting `generated/` a plain `pnpm install` will NOT bring it back (pnpm skips re-evaluating scripts when the dependency tree is unchanged) — use `pnpm install --force`.
-- `packages/typescript-config` — `base.json` is the only active base (`strict`, `module/moduleResolution: NodeNext`, `target ES2022`, `noUncheckedIndexedAccess`, `isolatedModules`). `nextjs.json` / `react-library.json` are unused. **One TypeScript major across the workspace: `7.0.2`** (root, the three libraries, and `apps/web`). `apps/api-gateway` declares `^7.0.2` rather than an exact pin — same major, but worth tightening to match.
-- `packages/eslint-config` — consume via `./base`; ignores `dist/**`, sets `turbo/no-undeclared-env-vars: warn`.
+- Dirección de dependencias por estructura, no por tooling: `core` no tiene runtime
+  deps, `security`/`infrastructure` dependen de `core`, solo `api-gateway` compone.
+  Importar siempre por exports (`@repo/core/authentication`,
+  `@repo/infrastructure/persistence/postgresSql`); un deep import
+  `../../packages/*/src/...` rompe el boundary y tsc igual lo acepta.
+  `turbo boundaries` **no** configurado — evaluado y descartado a propósito (cero
+  deep imports hoy; ver D-029).
+- Fuera de globs: `design-system/auth-app/MASTER.md` (documentación de diseño) y
+  `tools/` (helper `gh.ps1`) no los toca Turbo.
 
-## Conventions / quirks
+## Contrato de auth (`@repo/core` manda)
 
-- `moduleResolution: NodeNext` — relative imports MUST use `.js` extensions (e.g. `export * from './BcryptPasswordHasher.js'`). Verified in `core/src/authentication/index.ts`, `security/src/index.ts`.
-- `tsup.config.ts`: entry `src/**/index.ts`, `format: ["esm"]` only, `sourcemap: true`. Every subpath needs its own `index.ts` to be built.
-- `tsconfig.json` per lib: `rootDir ./src`, `outDir ./dist`. `dist/`, `.turbo/`, `node_modules/` are build artifacts (gitignored but present) — never edit; rebuild via `build:js`/`build:types`.
-- Env: `turbo.json` `build.inputs` includes `.env*`; root `.env.local` exists and `.env*` is gitignored. Never commit secrets. Gateway requires 6 secrets at boot (`required()` fail-fast in `apps/api-gateway/src/config/env/`); `dotenv` loads `.env.local` then `.env`.
-- Formatting: Prettier with no config file; `pnpm format` rewrites in place — run only on touched files or expect repo-wide diffs.
-- Codegraph first: repo has `.codegraph/` index. Use CLI (`status`, `query`, `explore`, `callers`) before Read/Glob/Grep on structural questions; `sync <root>` after edits. Skill: `codegraph` (global). A staleness banner (added/modified pending) means the index is behind the worktree — the CLI still answers from the last synced state, so verify a flagged file with Read before relying on it.
-- **Dependency direction is enforced by structure, not by tooling**: `core` has no runtime deps, `security`/`infrastructure` depend on `core`, and only `api-gateway` composes them (`src/core/di/container.ts`). Always import through package exports (`@repo/core/authentication`, `@repo/infrastructure/persistence/postgresSql`); a `../../packages/*/src/...` deep import defeats the boundary and tsc will usually still accept it. `turbo boundaries` is **not** configured — evaluated and deliberately rejected, because there is currently **zero** deep import anywhere in the repo. The boundary is intact by discipline, not by tooling. Revisit when someone actually breaks it; config added for a violation that does not exist is just surface to maintain.
-- **`@repo/core` owns the auth wire contract; `apps/web` re-exports it.** `apps/web/src/features/auth/types.ts` holds zero declarations — every name is an `export type` re-export of the core type that actually defines the shape (`LoginInput`→`LoginInputDTO`, `Profile`→`ProfileOutput`, `SessionPayload`→`SessionDTO`, etc.), renamed to preserve existing consumers. `@repo/core` is a **devDependency** of `web`, never a runtime one: all imports are type-only and `verbatimModuleSyntax` erases them, so nothing reaches the browser bundle. **Adding a field to a DTO is a core change** — do not redeclare a client-side copy, that is the drift this replaced.
-- **When a DTO changes, `core` must change first** and web picks it up on the next install. The only web-side contract that is still hand-maintained is the **path** list in `apps/web/src/constants/routes.ts`, which mirrors the gateway's `ApiPrefix` + `PublicRoutes`/`PrivateRoutes` enums. Six paths come from `PublicRoutes`; `ME` comes from **`PrivateRoutes`**, so grepping only one enum finds nothing.
-- `SessionDTO` is deliberately **narrower** than `LoginOutputDTO`/`RefreshOutputDTO`: the gateway answers `{ accessToken }` because the refresh token travels in an HttpOnly cookie. Do not "simplify" it into `Pick<LoginOutputDTO, "accessToken">` — a `Pick` would encode that transport decision as a client-side projection that compiles clean and silently drops a field if the gateway body ever changes.
-- Git: `main`, conventional commits in Spanish, no AI attribution. Identity is repo-local.
-- **The remote is named `main`, not `origin`.** `origin` does not exist; `git fetch origin` fails. Use `git fetch main`, `git push main <branch>`.
-- All work goes through a PR — `main` is protected and direct pushes are rejected. `gh pr merge <n> --merge` (merge commit, no squash/rebase).
-- Remote auth uses `GITHUB_TOKEN` from the environment, and **every shell call is a fresh process**: re-export it in each command rather than assuming it persisted.
+- `apps/web/src/features/auth/types.ts` tiene cero declaraciones: todo es
+  `export type` re-exportando el tipo de core que define la forma
+  (`LoginInput`→`LoginInputDTO`, `Profile`→`ProfileOutput`,
+  `SessionPayload`→`SessionDTO`, …). `@repo/core` es **devDependency** de `web`,
+  nunca runtime: `verbatimModuleSyntax` los borra, nada llega al bundle.
+  **Agregar un campo a un DTO es un cambio en core** (ver D-028).
+- Cuando un DTO cambia, `core` cambia primero. Lo único todavía manual del lado web
+  es la lista de **paths** en `apps/web/src/constants/routes.ts`, que espeja
+  `ApiPrefix` + `PublicRoutes`/`PrivateRoutes` del gateway. Seis paths vienen de
+  `PublicRoutes`; `ME` viene de **`PrivateRoutes`**.
+- `SessionDTO` es deliberadamente **más angosto** que
+  `LoginOutputDTO`/`RefreshOutputDTO`: el gateway responde `{ accessToken }`
+  porque el refresh viaja en cookie HttpOnly. No "simplificarlo" a
+  `Pick<LoginOutputDTO, "accessToken">` — codificaría la decisión de transporte
+  como proyección del cliente.
 
-## Api-gateway (user style — follow it)
+## Trampas pagadas (leer antes de tocar lo suyo)
 
-- Style source: user's template `JuanCardona16/api-rest-express-template` (Express 5, layered `config/core/features/infrastructure/lib/shared/constants`). `src/core/` = app nucleus (bootstrap, errors, middleware, routes) — NOT the domain.
-- Controllers are thin: routes → `validateWithZod` → `asyncHandler` → controller → **use case from `@repo/core`**. Never port services/repositories into the gateway — they live in packages. No `new XRepository()` inside controllers; wire everything in a composition root.
-- Errors: domain errors carry `code` only — gateway owns the `code → HTTP status` map inside `GlobalHandleError` (envelope `{success:false, error:{message,code,status,timestamp}}`).
-- Routes/contants pattern: `ApiPrefix` + `PublicRoutes` enums in `constants/`; swagger JSDoc on routes.
-- Imports are relative with `.js` extensions (NodeNext) — no `@/` alias.
-- Resolved: refresh transport is an **HttpOnly cookie** (the DTOs do not return the token in the body), `helmet` is mounted, login has its own rate limiter, and both the OpenAPI spec **and the Swagger UI** are served (`swagger-ui-express@5.0.1` is installed; see the `swaggerUi.serve` trap above).
-- **`RESEND_KEY`, `CLIENT_GOOGLE_ID` and `CLIENT_GOOGLE_SECRET` were removed** (template leftovers: declared, absent from every `.env.local`, zero consumers). Do not re-add them without the code that uses them — an env var nothing reads is a promise the repo does not keep.
-- The login page's "Remember for 30 days" is **static text, not a checkbox**: the refresh cookie's lifetime is `REFRESH_COOKIE_MAX_AGE_MS` on the server and the client cannot influence it. `LoginPage.test.tsx` asserts the checkbox's *absence* on purpose; putting it back is a regression.
+Cada una costó tiempo real; están pineadas por tests o por decisión registrada.
+
+**Tests / Vitest**
+
+- `noUncheckedIndexedAccess` activado: `const [first] = arr` no typecheckea. Usar
+  `arr[0]` con acceso opcional en tests.
+- `packages/core|security|infrastructure` no tienen `include` en tsconfig (tsc
+  globea todo `.ts`) y excluyen `src/**/__tests__/**` del emit.
+- `apps/web` usa `@testing-library/react` con `globals: false`: `src/test/setup.ts`
+  registra `cleanup()` en `afterEach`. Su `tsconfig.app.json` incluye `src`, así
+  que tsc type-checkea los tests web sin config separada.
+- Un `__tests__` excluido del tsconfig **no puede importar nada de afuera** (en
+  `api-gateway`, `src/core/__tests__/` no importa `src/constants/...`; falla con
+  `Cannot find module '/constants/index.js'`). Helpers compartidos van en
+  `src/__tests__/` de nivel superior (D-007).
+- `api-gateway` setea su env de tests en `src/test/setupEnv.ts` (entry
+  `setupFiles`), no por suite: `required()` corre **a import time**, antes que
+  cualquier `beforeAll` o `vi.stubEnv`. Verificar paridad con CI moviendo
+  `.env.local` a un lado, no confiando en un verde local.
+- `vi.mock` resuelve desde el módulo bajo test, no desde el test (D-013). Un
+  especificador distinto hace que el mock no aplique en silencio y la suite toque
+  una DB real.
+- Prisma `update`/`updateMany` toman **UN** objeto (`{ where, data, select }`), no
+  `(where, data)` (D-014). Suites multi-caso necesitan `vi.clearAllMocks()` en
+  `beforeEach`.
+- Dos pérdidas de datos deliberadas en los mappers, pineadas por tests:
+  `createdAt`/`updatedAt` se dropean (las entidades no tienen dónde guardarlas,
+  Prisma las rellena al escribir) y roles duplicados colapsan (`Set<string>` vs
+  `String[]`).
+
+**Express / gateway**
+
+- `statusForCode` usa `Object.hasOwn` a propósito: `STATUS_BY_CODE[code] ?? 500`
+  resolvería keys heredadas (`constructor`, `toString`) a funciones.
+- **Express reescribe `req.url` al despachar dentro de un router montado**:
+  leer `req.path` en `res.on("finish")` da el path relativo (`/login`, no
+  `/api/v1/auth/login`). `requestLogger` captura `method`/`path`/`ip` eagerly
+  (D-016).
+- `createRequestLogger` va **primero** en `app.ts`: después de `helmet`/rate
+  limiter perdería los 429, después de las rutas perdería los 404. Loguea
+  `req.path` (nunca `originalUrl`, nunca body, nunca `Authorization`; IP solo con
+  `ACCESS_LOG_IPS=true`) (D-015).
+- Montar docs handlers con `get("/path")`, nunca `use("/", handler)`: `use`
+  matchea todo bajo el mount y shadowea siblings con HTML y 200.
+- `swaggerUi.serve` sirve los assets; `setup()` renderiza **solo el HTML**. Sin
+  `serve`, la página carga en blanco con todo en 200. `docs.spec.test.ts` aserta
+  el `content-type` del CSS por eso.
+- OpenAPI + Swagger UI en `GET /api/docs` (sibling de `/api/v1`).
+  `DOCS_ENABLED` default ON en dev, **OFF en producción**; `OPENAPI_SERVER_URL`
+  default `/` (D-020).
+- **`@scarf/scarf` explícitamente NO aprobado** (`"@scarf/scarf": false`):
+  postinstall que reporta a `scarf.sh`, transitivo vía `swagger-ui-dist`.
+  Re-chequear `allowBuilds` con cada `pnpm add`.
+- Knobs del gateway (`config/env/index.ts`, validados a boot): `TRUST_PROXY_HOPS`
+  (default `0`), `REFRESH_COOKIE_SAME_SITE` (`lax`, D-003),
+  `REFRESH_COOKIE_SECURE` (true en producción), `ACCESS_LOG_IPS` (`false`, GDPR).
+- `RESEND_KEY`, `CLIENT_GOOGLE_ID`, `CLIENT_GOOGLE_SECRET` se **eliminaron**
+  (leftovers del template, cero consumidores). No re-agregar sin el código que
+  los use (D-017).
+
+**Auth / dominio**
+
+- `docs/decisions.md` es el decision log. Leerlo antes de cambiar comportamiento
+  de auth (D-001..D-030).
+- `Email` normaliza (`trim().toLowerCase()`) antes de validar + índice único
+  funcional en `lower(email)`. Ambas capas en sync (D-001).
+- Password reset (`forgot|reset`): `forgot` responde **byte-idéntico** para
+  conocida/desconocida y el use case traga *todo* error del sender — si no,
+  cualquier bug del adapter se vuelve oráculo de enumeración (D-024). El token va
+  en el **fragment** de la URL (el browser nunca lo transmite). Vars opcionales a
+  propósito (`RESEND_API_KEY`, `PASSWORD_RESET_URL`, `EMAIL_FROM`) con warning en
+  producción si faltan (D-023).
+- `apiClient` normaliza un `fetch` rechazado a `ApiError` (`NETWORK_ERROR`,
+  status `0`); `AbortError` pasa intacto — cancelar no es un problema de conexión
+  (D-019). Las páginas renderizan error solo con `instanceof ApiError`.
+- En `apps/web` el header `Authorization` NO sale del store zustand: `apiClient`
+  lo lee de un accessor que `Bootstrap` instala vía `configureApi`. `main.tsx`
+  importa `RouterProvider` de `react-router/dom` mientras los componentes consumen
+  el contexto de `react-router` — instancias distintas que rompen tests de routing.
+- Cambiar roles es reemplazo total + revoca sesiones, `requireRole("admin")`
+  **después** de `createAuthorize` (D-005). El anónimo recibe 401, nunca 403.
+- Primer admin por script, no por ruta:
+  `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>` (D-012).
+- El "Remember for 30 days" del login es **texto estático, no checkbox**: la vida
+  de la cookie la manda `REFRESH_COOKIE_MAX_AGE_MS` en el servidor. Hay un test
+  que aserta su *ausencia* (D-018).
+
+**Prisma / env**
+
+- Dos `.env.local`, y la app usa el del paquete: `apps/api-gateway/.env.local`
+  (Neon vía PgBouncer + `PORT=3001`) es la app; el raíz (Postgres 17.11 local) es
+  para los integration tests de `infrastructure`. Editar el raíz no cambia dónde
+  guarda la app.
+- Migraciones en
+  `packages/infrastructure/src/persistence/postgresSql/prisma/migrations/`
+  (aplicadas en ambas DBs al 2026-09-29). El archivo debe llamarse exactamente
+  `migration.sql` (si no, `P3015`). Los scripts `prisma:migrate:*` pasan
+  `--config` solos (D-008, D-027). Para migrar Neon, exportar el `DATABASE_URL`
+  del gateway. Aislamiento de tests por clave única (`randomUUID`), nunca
+  `TRUNCATE`/`deleteMany` global (D-009).
+- `@repo/infrastructure` genera el Prisma client en `postinstall` (CI no tiene
+  paso manual). Corre solo en `install`, no en `build`: tras borrar `generated/`,
+  un `pnpm install` común NO lo trae de vuelta — usar `pnpm install --force`.
+
+**Convenciones de código**
+
+- `moduleResolution: NodeNext` — imports relativos con extensión `.js`.
+- `tsup.config.ts`: entry `src/**/index.ts`, solo `format: ["esm"]`,
+  `sourcemap: true`. Cada subpath necesita su `index.ts`.
+- `tsconfig.json` por lib: `rootDir ./src`, `outDir ./dist`. `dist/`, `.turbo/`,
+  `node_modules/` son artefactos — nunca editar; rebuild vía `build:js`/`build:types`.
+- Env: `turbo.json` `build.inputs` incluye `.env*`; `.env*` gitignored. Nunca
+  commitear secretos. El gateway exige 6 secretos a boot (`required()` fail-fast);
+  `dotenv` carga `.env.local` y después `.env`.
+- Prettier sin config; `pnpm format` reescribe in place — correr solo sobre
+  archivos tocados o esperar diff repo-wide.
+- Codegraph primero: el repo tiene índice `.codegraph/`. CLI (`status`, `query`,
+  `explore`, `callers`) antes de Read/Glob/Grep en preguntas estructurales;
+  `sync <root>` tras editar. Un banner de staleness significa índice atrasado —
+  verificar el archivo con Read.
+- `Email` normaliza (`trim().toLowerCase()`) antes de validar, whitespace
+  aceptado y trimmeado, casing nunca llega a storage. Índice único funcional en
+  `lower(email)`; ambas capas en sync.
+
+## Api-gateway (estilo del dueño — seguirlo)
+
+- Fuente: template `JuanCardona16/api-rest-express-template` (Express 5, capas
+  `config/core/features/infrastructure/lib/shared/constants`). `src/core/` = núcleo
+  de app (bootstrap, errors, middleware, routes) — NO el dominio.
+- Controladores finos: routes → `validateWithZod` → `asyncHandler` → controller →
+  **use case de `@repo/core`**. Nada de portar servicios/repos al gateway; viven
+  en packages. Nada de `new XRepository()` en controllers; todo en el composition
+  root.
+- Errores: el dominio lleva solo `code` — el gateway mapea `code → HTTP status`
+  en `GlobalHandleError` (envelope `{success:false, error:{message,code,status,timestamp}}`).
+- Patrón de rutas: enums `ApiPrefix` + `PublicRoutes` en `constants/`; JSDoc
+  swagger en routes.
+- Imports relativos con `.js` (NodeNext) — sin alias `@/`.
+- Resuelto: refresh en **cookie HttpOnly**, `helmet` montado, rate limiter propio
+  en login, OpenAPI spec **y** Swagger UI servidos.
+
+## Git
+
+- Rama `main`, commits convencionales en español, sin atribución a IA. Identidad
+  repo-local.
+- **El remoto se llama `main`, no `origin`.** `origin` no existe.
+  `git fetch main`, `git push main <branch>`.
+- Todo por PR — `main` protegida, pushes directos rechazados.
+  `gh pr merge <n> --merge` (merge commit, sin squash/rebase).
+- Auth remoto con `GITHUB_TOKEN` del entorno; **cada shell es un proceso fresco**:
+  re-exportarlo en cada comando.
