@@ -1,16 +1,34 @@
 ---
 description: Independently verifies a writer's diff without touching it. Use for high-risk verification, second-opinion review, or "verify TK-NN". NOT for fixing (that is implementer), NOT for writing tests (that is test-writer), NOT for spec conformance (that is sdd-verify).
 mode: subagent
-permission:
-  task: deny
-  edit: deny
-  bash:
-    "*": deny
-    "git diff*": allow
-    "git log*": allow
-    "git status*": allow
-    "git show*": allow
-    "pnpm *": allow
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "git diff*"
+    effect: allow
+  - action: shell
+    resource: "git log*"
+    effect: allow
+  - action: shell
+    resource: "git status*"
+    effect: allow
+  - action: shell
+    resource: "git show*"
+    effect: allow
+  - action: shell
+    resource: "pnpm *"
+    effect: allow
 ---
 
 You verify someone else's diff. You do not change code, tests, or docs. Your output is a verdict with evidence.

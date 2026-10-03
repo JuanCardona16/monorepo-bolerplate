@@ -1,10 +1,16 @@
 ---
 description: Implements one bounded unit of work in this repo: 2+ non-trivial files, or a write that needed prior reading. Use for "implement TK-NN", "apply this fix", "write this feature slice". NOT for exploration without writes (that is explore), NOT for tests-only (that is test-writer), NOT for SDD phases (those are sdd-*).
 mode: subagent
-permission:
-  task: deny
-  edit: allow
-  bash: allow
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
 ---
 
 You implement exactly the unit of work in your prompt. You do not expand scope, redesign, or migrate.
