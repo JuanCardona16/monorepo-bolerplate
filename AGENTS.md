@@ -2,8 +2,10 @@
 
 > Lectura en orden: este archivo dice **cómo trabajar**; `docs/overview.md` dice
 > **qué es el proyecto**; `docs/architecture.md` dice **dónde vive cada cosa**;
-> `docs/decisions.md` dice **por qué**. Si algo de lo técnico contradice a los
-> manifests o a `src/`, mandan los manifests y `src/`.
+> las decisiones pasadas (**por qué**) viven en Engram
+> (`mem_search`, proyecto `monorepo-bolerplate`, topics `decisions/D-XXX`).
+> Si algo de lo técnico contradice a los manifests o a `src/`, mandan los
+> manifests y `src/`.
 
 ## 0. Cómo trabajar en este repo
 
@@ -22,8 +24,8 @@ autonomía, no de código.
 **Frenar y preguntar** (una sola pregunta, después esperar):
 
 - El alcance es ambiguo o condicional ("si…", "quizás", "como quieras").
-- La tarea implica una decisión de producto o arquitectura no registrada en
-  `docs/decisions.md` (un default nuevo, un campo nuevo en un DTO, un cambio de
+- La tarea implica una decisión de producto o arquitectura no registrada en Engram
+  (topics `decisions/D-XXX`: un default nuevo, un campo nuevo en un DTO, un cambio de
   transporte como cookie vs body).
 - El trabajo se expandiría a archivos fuera de lo pedido.
 - Hay que pushear, abrir un PR, mergear, borrar datos reales o tocar credenciales,
@@ -192,111 +194,19 @@ que falla en un runner limpio. Para ejercitar build scripts de verdad: `pnpm reb
   `Pick<LoginOutputDTO, "accessToken">` — codificaría la decisión de transporte
   como proyección del cliente.
 
-## Trampas pagadas (leer antes de tocar lo suyo)
+## Trampas pagadas (índice — el catálogo vive en `docs/traps.md`)
 
-Cada una costó tiempo real; están pineadas por tests o por decisión registrada.
+El catálogo completo con evidencia vive en `docs/traps.md`. Acá solo el índice
+para saber qué sección abrir antes de tocar lo suyo.
 
-**Tests / Vitest**
+| Voy a tocar | Leer primero |
+|---|---|
+| Tests, Vitest, mocks, Prisma en tests | `traps.md` — Tests / Vitest |
+| Middleware, logger, docs, Swagger, gateway | `traps.md` — Express / gateway |
+| Login, reset, roles, cookies, cliente auth | `traps.md` — Auth / dominio |
+| `.env.local`, migraciones, Neon vs local | `traps.md` — Prisma / env |
+| pnpm, Turbo, imports, rutas | `traps.md` — Tooling / repo |
 
-- `noUncheckedIndexedAccess` activado: `const [first] = arr` no typecheckea. Usar
-  `arr[0]` con acceso opcional en tests.
-- `packages/core|security|infrastructure` no tienen `include` en tsconfig (tsc
-  globea todo `.ts`) y excluyen `src/**/__tests__/**` del emit.
-- `apps/web` usa `@testing-library/react` con `globals: false`: `src/test/setup.ts`
-  registra `cleanup()` en `afterEach`. Su `tsconfig.app.json` incluye `src`, así
-  que tsc type-checkea los tests web sin config separada.
-- Un `__tests__` excluido del tsconfig **no puede importar nada de afuera** (en
-  `api-gateway`, `src/core/__tests__/` no importa `src/constants/...`; falla con
-  `Cannot find module '/constants/index.js'`). Helpers compartidos van en
-  `src/__tests__/` de nivel superior (D-007).
-- `api-gateway` setea su env de tests en `src/test/setupEnv.ts` (entry
-  `setupFiles`), no por suite: `required()` corre **a import time**, antes que
-  cualquier `beforeAll` o `vi.stubEnv`. Verificar paridad con CI moviendo
-  `.env.local` a un lado, no confiando en un verde local.
-- `vi.mock` resuelve desde el módulo bajo test, no desde el test (D-013). Un
-  especificador distinto hace que el mock no aplique en silencio y la suite toque
-  una DB real.
-- Prisma `update`/`updateMany` toman **UN** objeto (`{ where, data, select }`), no
-  `(where, data)` (D-014). Suites multi-caso necesitan `vi.clearAllMocks()` en
-  `beforeEach`.
-- Dos pérdidas de datos deliberadas en los mappers, pineadas por tests:
-  `createdAt`/`updatedAt` se dropean (las entidades no tienen dónde guardarlas,
-  Prisma las rellena al escribir) y roles duplicados colapsan (`Set<string>` vs
-  `String[]`).
-
-**Express / gateway**
-
-- `statusForCode` usa `Object.hasOwn` a propósito: `STATUS_BY_CODE[code] ?? 500`
-  resolvería keys heredadas (`constructor`, `toString`) a funciones.
-- **Express reescribe `req.url` al despachar dentro de un router montado**:
-  leer `req.path` en `res.on("finish")` da el path relativo (`/login`, no
-  `/api/v1/auth/login`). `requestLogger` captura `method`/`path`/`ip` eagerly
-  (D-016).
-- `createRequestLogger` va **primero** en `app.ts`: después de `helmet`/rate
-  limiter perdería los 429, después de las rutas perdería los 404. Loguea
-  `req.path` (nunca `originalUrl`, nunca body, nunca `Authorization`; IP solo con
-  `ACCESS_LOG_IPS=true`) (D-015).
-- Montar docs handlers con `get("/path")`, nunca `use("/", handler)`: `use`
-  matchea todo bajo el mount y shadowea siblings con HTML y 200.
-- `swaggerUi.serve` sirve los assets; `setup()` renderiza **solo el HTML**. Sin
-  `serve`, la página carga en blanco con todo en 200. `docs.spec.test.ts` aserta
-  el `content-type` del CSS por eso.
-- OpenAPI + Swagger UI en `GET /api/docs` (sibling de `/api/v1`).
-  `DOCS_ENABLED` default ON en dev, **OFF en producción**; `OPENAPI_SERVER_URL`
-  default `/` (D-020).
-- **`@scarf/scarf` explícitamente NO aprobado** (`"@scarf/scarf": false`):
-  postinstall que reporta a `scarf.sh`, transitivo vía `swagger-ui-dist`.
-  Re-chequear `allowBuilds` con cada `pnpm add`.
-- Knobs del gateway (`config/env/index.ts`, validados a boot): `TRUST_PROXY_HOPS`
-  (default `0`), `REFRESH_COOKIE_SAME_SITE` (`lax`, D-003),
-  `REFRESH_COOKIE_SECURE` (true en producción), `ACCESS_LOG_IPS` (`false`, GDPR).
-- `RESEND_KEY`, `CLIENT_GOOGLE_ID`, `CLIENT_GOOGLE_SECRET` se **eliminaron**
-  (leftovers del template, cero consumidores). No re-agregar sin el código que
-  los use (D-017).
-
-**Auth / dominio**
-
-- `docs/decisions.md` es el decision log. Leerlo antes de cambiar comportamiento
-  de auth (D-001..D-030).
-- `Email` normaliza (`trim().toLowerCase()`) antes de validar + índice único
-  funcional en `lower(email)`. Ambas capas en sync (D-001).
-- Password reset (`forgot|reset`): `forgot` responde **byte-idéntico** para
-  conocida/desconocida y el use case traga *todo* error del sender — si no,
-  cualquier bug del adapter se vuelve oráculo de enumeración (D-024). El token va
-  en el **fragment** de la URL (el browser nunca lo transmite). Vars opcionales a
-  propósito (`RESEND_API_KEY`, `PASSWORD_RESET_URL`, `EMAIL_FROM`) con warning en
-  producción si faltan (D-023).
-- `apiClient` normaliza un `fetch` rechazado a `ApiError` (`NETWORK_ERROR`,
-  status `0`); `AbortError` pasa intacto — cancelar no es un problema de conexión
-  (D-019). Las páginas renderizan error solo con `instanceof ApiError`.
-- En `apps/web` el header `Authorization` NO sale del store zustand: `apiClient`
-  lo lee de un accessor que `Bootstrap` instala vía `configureApi`. `main.tsx`
-  importa `RouterProvider` de `react-router/dom` mientras los componentes consumen
-  el contexto de `react-router` — instancias distintas que rompen tests de routing.
-- Cambiar roles es reemplazo total + revoca sesiones, `requireRole("admin")`
-  **después** de `createAuthorize` (D-005). El anónimo recibe 401, nunca 403.
-- Primer admin por script, no por ruta:
-  `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>` (D-012).
-- El "Remember for 30 days" del login es **texto estático, no checkbox**: la vida
-  de la cookie la manda `REFRESH_COOKIE_MAX_AGE_MS` en el servidor. Hay un test
-  que aserta su *ausencia* (D-018).
-
-**Prisma / env**
-
-- Dos `.env.local`, y la app usa el del paquete: `apps/api-gateway/.env.local`
-  (Neon vía PgBouncer + `PORT=3001`) es la app; el raíz (Postgres 17.11 local) es
-  para los integration tests de `infrastructure`. Editar el raíz no cambia dónde
-  guarda la app.
-- Migraciones en
-  `packages/infrastructure/src/persistence/postgresSql/prisma/migrations/`
-  (aplicadas en ambas DBs al 2026-09-29). El archivo debe llamarse exactamente
-  `migration.sql` (si no, `P3015`). Los scripts `prisma:migrate:*` pasan
-  `--config` solos (D-008, D-027). Para migrar Neon, exportar el `DATABASE_URL`
-  del gateway. Aislamiento de tests por clave única (`randomUUID`), nunca
-  `TRUNCATE`/`deleteMany` global (D-009).
-- `@repo/infrastructure` genera el Prisma client en `postinstall` (CI no tiene
-  paso manual). Corre solo en `install`, no en `build`: tras borrar `generated/`,
-  un `pnpm install` común NO lo trae de vuelta — usar `pnpm install --force`.
 
 **Convenciones de código**
 

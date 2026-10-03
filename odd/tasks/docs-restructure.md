@@ -28,6 +28,12 @@ porque AGENTS.md mezcla referencia técnica con reglas de conducta sin jerarquí
 - [x] T3: docs/architecture.md — responsabilidades por carpeta, navegación, diagrama
 - [x] T4: README.md público reescrito
 - [x] T5: Verificación — toda afirmación cruzada contra manifests/src (cero invento)
+- [x] T6: docs/traps.md — catálogo de trampas por área; AGENTS.md adelgazado a índice
+- [x] T7: decisiones D-001..D-030 migradas a Engram (proyecto `monorepo-bolerplate`,
+  topics `decisions/D-XXX`, obs #329..#357); archivo decisions.md eliminado;
+  referencias actualizadas en AGENTS/overview/architecture/traps/README/auth-tareas.
+  Nota: `.engram/config.json` necesitó `project_name` además de `project`
+  (el MCP pedía `project_name`; los repos viejos solo tienen `project`).
 
 ## Decisiones pendientes
 - Reglas de comportamiento exactas que el usuario espera (1 pregunta hecha, esperando respuesta).

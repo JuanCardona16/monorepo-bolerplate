@@ -62,4 +62,4 @@ CI gate.
 
 - `docs/overview.md` — project summary, stack, dependencies, how to run it
 - `docs/architecture.md` — where everything lives and how to navigate it
-- `docs/decisions.md` — decision log: the reasoning behind the code
+- Decision log: past decisions live in project memory (Engram, topics `decisions/D-XXX`), not in the repo

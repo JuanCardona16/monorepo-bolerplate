@@ -2,7 +2,7 @@
 
 > Revisado el 2026-10-03 contra el árbol vigente (`main` @ `5b2fa54`).
 > La parte HTTP vive en `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
-> Decisiones registradas con su motivo en [`decisions.md`](./decisions.md).
+> Decisiones registradas con su motivo en Engram (proyecto `monorepo-bolerplate`, topics `decisions/D-XXX`).
 >
 > Este archivo se actualiza **junto al código**, no después. Que el próximo lector
 > tenga que cruzarlo con `AGENTS.md` para saber qué quedó vivo es exactamente el
@@ -145,7 +145,7 @@ de esos tres es la señal real; un verde de `pnpm lint` no significa nada.
 ## Historial de trampas pagadas
 
 Tres de estas trampas se pagaron más de una vez, y cada una está registrada con su
-causa raíz en `decisions.md` y en `AGENTS.md`:
+causa raíz en Engram (topics `decisions/D-XXX`) y en `AGENTS.md`:
 
 - **D-007** — un `__tests__` anidado no puede importar nada de afuera de sí mismo.
 - **D-013** — `vi.mock` necesita el mismo especificador que el módulo bajo prueba;

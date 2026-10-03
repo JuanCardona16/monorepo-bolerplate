@@ -112,7 +112,8 @@ de dominio portada acá.
 2. **Por síntoma**: error HTTP → `features/authentication/` del gateway; forma de
    datos → `core/.../dtos/`; comportamiento de auth → use case en core; persistencia
    → `infrastructure/.../repositories/`; UI → `web/features/auth/pages/`.
-3. **Por decisión**: `docs/decisions.md` antes de cambiar comportamiento (D-001..D-030).
+3. **Por decisión**: Engram antes de cambiar comportamiento (`mem_search` en el
+   proyecto `monorepo-bolerplate`, topics `decisions/D-001..D-030`).
 4. **Por path HTTP**: `constants/routes.ts` del gateway es la fuente; el espejo web
    es copia (y `ME` vive en `PrivateRoutes`, no en `PublicRoutes`).
 5. **Imports**: siempre por package exports; NodeNext exige `.js` en relativos.

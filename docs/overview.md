@@ -3,7 +3,8 @@
 Monorepo de autenticación de punta a punta: dominio de auth en TypeScript puro,
 API Express que lo expone y cliente React que lo consume. Sirve como base
 reutilizable (este es el "bolerplate") y como referencia de decisiones ya pagadas:
-cada trampa que costó tiempo está registrada en `decisions.md` con su motivo.
+cada trampa que costó tiempo está registrada en Engram (topics
+`decisions/D-XXX`) con su motivo.
 
 ## Estado
 
@@ -58,7 +59,8 @@ pnpm test
 |---|---|
 | `docs/overview.md` | Qué es esto (este archivo) |
 | `docs/architecture.md` | Dónde vive cada cosa y cómo navegarlo |
-| `docs/decisions.md` | Por qué el código es como es (D-001..D-030) |
+| `docs/traps.md` | Trampas ya pagadas, por área |
+| `docs/decisions.md` → Engram | Por qué el código es como es (proyecto `monorepo-bolerplate`, topics `decisions/D-001..D-030`) |
 | `docs/auth-tareas-pendientes.md` | Qué de auth quedó pendiente |
 | `design-system/auth-app/MASTER.md` | Diseño visual de la app de auth (fuera del workspace) |
 | `odd/tasks/` | Bitácoras de trabajo por feature |
