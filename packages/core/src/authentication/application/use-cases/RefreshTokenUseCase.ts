@@ -6,8 +6,7 @@ import { RefreshTokenHasher } from "../ports/RefreshTokenHasher.js";
 import { TokenProvider } from "../ports/TokenProvider.js";
 import { RefreshInputDTO } from "../dtos/RefreshInputDTO.js";
 import { RefreshOutputDTO } from "../dtos/RefreshOutputDTO.js";
-
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+import { sessionTtlMs } from "../sessionLifetimes.js";
 
 export class RefreshTokenUseCase {
   constructor(
@@ -44,8 +43,9 @@ export class RefreshTokenUseCase {
       userUuid: stored.userUuid,
       tokenHash: await this.refreshTokenHasher.hash(rawToken),
       roles: Array.from(stored.roles),
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      expiresAt: new Date(Date.now() + sessionTtlMs(stored.rememberMe)),
       revokedAt: null,
+      rememberMe: stored.rememberMe,
     });
     await this.refreshTokenRepository.save(rotated);
 
@@ -54,6 +54,6 @@ export class RefreshTokenUseCase {
       roles: Array.from(stored.roles),
     });
 
-    return { accessToken, refreshToken: rawToken };
+    return { accessToken, refreshToken: rawToken, rememberMe: stored.rememberMe };
   }
 }

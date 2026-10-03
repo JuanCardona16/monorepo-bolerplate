@@ -258,6 +258,50 @@ describe("POST /api/v1/auth/login", () => {
     expect(status).toBe(400);
     expect(body.error?.code).toBe("VALIDATION_ERROR");
   });
+
+  it("passes rememberMe through and sets the 30-day cookie when true", async () => {
+    container.loginUseCase.execute.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "raw-refresh-token",
+      rememberMe: true,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/login", {
+      email: "user@example.com",
+      password: "Password1",
+      rememberMe: true,
+    });
+
+    expect(status).toBe(200);
+    expect(container.loginUseCase.execute).toHaveBeenCalledWith({
+      email: "user@example.com",
+      password: "Password1",
+      rememberMe: true,
+    });
+    expect(setCookie).toContain("Max-Age=2592000");
+  });
+
+  it("defaults to the 24-hour cookie when rememberMe is absent", async () => {
+    container.loginUseCase.execute.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "raw-refresh-token",
+      rememberMe: false,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/login", {
+      email: "user@example.com",
+      password: "Password1",
+    });
+
+    expect(status).toBe(200);
+    expect(container.loginUseCase.execute).toHaveBeenCalledWith({
+      email: "user@example.com",
+      password: "Password1",
+      rememberMe: false,
+    });
+    expect(setCookie).toContain("Max-Age=86400");
+    expect(setCookie).not.toContain("Max-Age=2592000");
+  });
 });
 
 describe("POST /api/v1/auth/refresh", () => {
@@ -296,6 +340,37 @@ describe("POST /api/v1/auth/refresh", () => {
 
     expect(status).toBe(401);
     expect(body.error?.code).toBe("INVALID_REFRESH_TOKEN");
+  });
+
+  it("keeps a short session short across rotation", async () => {
+    container.refreshUseCase.execute.mockResolvedValue({
+      accessToken: "new-access-token",
+      refreshToken: "new-raw-refresh-token",
+      rememberMe: false,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/refresh", undefined, {
+      Cookie: `${REFRESH_COOKIE}=existing-refresh-token`,
+    });
+
+    expect(status).toBe(200);
+    expect(setCookie).toContain("Max-Age=86400");
+    expect(setCookie).not.toContain("Max-Age=2592000");
+  });
+
+  it("keeps a long session long across rotation", async () => {
+    container.refreshUseCase.execute.mockResolvedValue({
+      accessToken: "new-access-token",
+      refreshToken: "new-raw-refresh-token",
+      rememberMe: true,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/refresh", undefined, {
+      Cookie: `${REFRESH_COOKIE}=existing-refresh-token`,
+    });
+
+    expect(status).toBe(200);
+    expect(setCookie).toContain("Max-Age=2592000");
   });
 
   it("clears the refresh cookie when the refresh is rejected", async () => {

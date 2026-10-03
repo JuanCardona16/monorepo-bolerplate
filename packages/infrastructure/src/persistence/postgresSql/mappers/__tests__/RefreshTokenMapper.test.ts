@@ -20,6 +20,7 @@ function makeRow(overrides: Partial<RefreshTokenSchema> = {}): RefreshTokenSchem
     roles: ["user"],
     expiresAt: EXPIRES_AT,
     revokedAt: null,
+    rememberMe: true,
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT,
     ...overrides,
@@ -48,6 +49,11 @@ describe("RefreshTokenMapper", () => {
 
       expect(token.revokedAt).toBeNull();
       expect(token.isRevoked).toBe(false);
+    });
+
+    it("carries the remember-me choice of the row", () => {
+      expect(RefreshTokenMapper.toDomain(makeRow({ rememberMe: true })).rememberMe).toBe(true);
+      expect(RefreshTokenMapper.toDomain(makeRow({ rememberMe: false })).rememberMe).toBe(false);
     });
 
     it("marks the token as revoked when the column holds a date", () => {
@@ -84,6 +90,7 @@ describe("RefreshTokenMapper", () => {
         roles: ["user", "admin"],
         expiresAt: EXPIRES_AT,
         revokedAt: null,
+        rememberMe: true,
       });
     });
 
@@ -139,6 +146,7 @@ describe("RefreshTokenMapper", () => {
         roles: row.roles,
         expiresAt: row.expiresAt,
         revokedAt: row.revokedAt,
+        rememberMe: row.rememberMe,
       });
       expect(payload.expiresAt.getTime()).toBe(row.expiresAt.getTime());
     });
@@ -176,6 +184,7 @@ describe("RefreshTokenMapper", () => {
       expect(Object.keys(payload).sort()).toEqual([
         "expiresAt",
         "id",
+        "rememberMe",
         "revokedAt",
         "roles",
         "tokenHash",

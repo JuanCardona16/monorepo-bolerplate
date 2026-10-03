@@ -10,6 +10,7 @@ export class RefreshTokenMapper {
       roles: row.roles,
       expiresAt: row.expiresAt,
       revokedAt: row.revokedAt,
+      rememberMe: row.rememberMe,
     });
   }
 
@@ -20,6 +21,7 @@ export class RefreshTokenMapper {
     roles: string[];
     expiresAt: Date;
     revokedAt: Date | null;
+    rememberMe: boolean;
   } {
     return {
       id: token.id,
@@ -28,6 +30,7 @@ export class RefreshTokenMapper {
       roles: Array.from(token.roles),
       expiresAt: token.expiresAt,
       revokedAt: token.revokedAt,
+      rememberMe: token.rememberMe,
     };
   }
 }

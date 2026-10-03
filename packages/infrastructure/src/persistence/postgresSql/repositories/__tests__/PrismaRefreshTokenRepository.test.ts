@@ -58,6 +58,7 @@ function makeToken(overrides: Partial<RefreshToken> = {}): RefreshToken {
     roles: Array.from(overrides.roles ?? new Set(["user"])),
     expiresAt: overrides.expiresAt ?? FUTURE,
     revokedAt: overrides.revokedAt ?? null,
+    rememberMe: overrides.rememberMe ?? true,
   });
 }
 
@@ -113,6 +114,7 @@ describeDb("PrismaRefreshTokenRepository (real Postgres)", () => {
         roles: Array.from(token.roles),
         expiresAt: token.expiresAt,
         revokedAt,
+        rememberMe: token.rememberMe,
       });
 
       await repository.save(revoked);
@@ -226,6 +228,7 @@ describeDb("PrismaRefreshTokenRepository (real Postgres)", () => {
         roles: ["user"],
         expiresAt: FUTURE,
         revokedAt: alreadyRevokedAt,
+        rememberMe: true,
       });
       const active = makeToken({ userUuid });
       await repository.save(revoked);
