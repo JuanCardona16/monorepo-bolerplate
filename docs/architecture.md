@@ -17,7 +17,8 @@ monorepo-bolerplate
 │   ├── infrastructure/       Adaptadores Prisma Postgres + email (Resend)
 │   ├── typescript-config/    base.json activo (nextjs/react-library sin uso)
 │   └── eslint-config/        Consumir vía ./base
-├── docs/                     overview · architecture · decisions · pendientes
+├── docs/                     overview · architecture · tasks · traps (+ pendientes históricos en git)
+├── .opencode/agents/         implementer (writer acotado) · reviewer (verificador solo-lectura)
 ├── design-system/auth-app/   Diseño visual (FUERA del workspace: Turbo lo ignora)
 ├── tools/                    Helper gh.ps1 (fuera del workspace)
 └── odd/tasks/                Bitácoras de trabajo por feature
@@ -118,3 +119,12 @@ de dominio portada acá.
    es copia (y `ME` vive en `PrivateRoutes`, no en `PublicRoutes`).
 5. **Imports**: siempre por package exports; NodeNext exige `.js` en relativos.
    `web` nunca importa runtime de `core` (solo tipos, borrados en build).
+
+## Agentes del repo
+
+Los subagentes que este flujo puede usar viven en tres capas: builtins
+(`explore`, `general`), globales (`test-writer`, `doc-writer`, `sdd-*`) y de
+repo (`.opencode/agents/`: `implementer` para escribir acotado, `reviewer`
+para verificar sin tocar). La tabla de ruteo por fase TK y el contrato de
+prompt están en `AGENTS.md` (sección Delegación); acá solo importa saber que
+existen y dónde viven.

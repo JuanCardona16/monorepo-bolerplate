@@ -35,10 +35,13 @@ porque AGENTS.md mezcla referencia técnica con reglas de conducta sin jerarquí
   Nota: `.engram/config.json` necesitó `project_name` además de `project`
   (el MCP pedía `project_name`; los repos viejos solo tienen `project`).
 - [x] T8: `docs/auth-tareas-pendientes.md` → `docs/tasks.md` (vía `git mv`, historial
-  preservado). Solo lo pendiente vivo (10 ítems por estado: bloqueado/producto/deuda),
+  preservado). Solo lo pendiente vivo (9 ítems por estado: bloqueado/producto/deuda),
   cada uno con cómo verificarlo. Salió lo completado (a git), lo duplicado (D-030,
   traps.md) y lo muerto (`.next/**`, hecho en `a77892d`). Categorizar por dominio
   descartado: repo 100% auth, el eje real es quién desbloquea.
+- [x] T9: convención `TK-NN` aplicada (TK-01..TK-09) + rutina de 7 reglas en AGENTS.md
+  (capa sobre ODD) + agentes `.opencode/agents/{implementer,reviewer}.md` en formato V2
+  + política de PR/merge standing. PRs #27 y #28 mergeados a `main` con checks verdes.
 
 ## Decisiones pendientes
 - Reglas de comportamiento exactas que el usuario espera (1 pregunta hecha, esperando respuesta).
