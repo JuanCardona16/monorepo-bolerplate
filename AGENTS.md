@@ -87,6 +87,30 @@ mandando. Lo de abajo dice *cómo* se ejecuta cada paso en este repo.
 7. **Estas reglas no se negocian por apuro.** Si una choca con el pedido (piden
    tocar lo verificado, saltear tests, no documentar), se frena y se pregunta.
 
+### Delegación a subagentes
+
+Los agentes viven en tres capas: builtins (`explore`, `general`), globales
+(`test-writer`, `doc-writer`, `sdd-*` en `~/.config/opencode`) y de repo
+(`.opencode/agents/`). El ruteo por fase de un TK:
+
+| Fase del TK | Agente | Por qué ese |
+|---|---|---|
+| Explorar/mapear (4+ archivos, sin writes) | `explore` | Read-only por construcción |
+| Tests primero (TDD) | `test-writer` | Escribe tests, prohíbe tocar implementación |
+| Implementar (2+ archivos o write con lectura previa) | `implementer` (repo) | Acotado al prompt, reporta verificación real |
+| Verificación independiente (riesgo alto) | `reviewer` (repo) | Solo lectura, veredicto con evidencia |
+| Docs de un cambio | `doc-writer` | Prohíbe inventar y cambiar código |
+| Fases SDD (solo SDD explícito) | `sdd-*` | Nunca para trabajo orgánico |
+
+Al delegar, el prompt lleva siempre: alcance exacto (archivos), skills
+resueltas (`## Skills to load`), `## Verification` con los comandos a correr,
+y `## Known environmental failures` si aplica. Los subagentes nacen sin memoria:
+se pasan referencias (topic keys, rutas), nunca el contenido. Resultado con
+`status` distinto de éxito = no se avanza a la fase dependiente.
+
+Si los subagentes no están disponibles en el entorno (ej. tier gratuito fuera de
+OpenCode), se trabaja inline y se declara — nunca se finge la delegación.
+
 ## Setup
 
 - `pnpm@12.5.1`, `node >= 24`. Siempre `pnpm`; nada de npm/yarn.
@@ -283,5 +307,13 @@ para saber qué sección abrir antes de tocar lo suyo.
   `git fetch main`, `git push main <branch>`.
 - Todo por PR — `main` protegida, pushes directos rechazados.
   `gh pr merge <n> --merge` (merge commit, sin squash/rebase).
+- **Política de PRs y merge (standing):** por cada tarea se crea su PR. Si los
+  checks están en verde y no es sensible, se mergea sin preguntar. Si es
+  sensible o requiere revisión del usuario, se sube el PR y se avisa para que
+  lo revise y mergee él.
+- **Sensible =** comportamiento de auth o seguridad, datos reales o migraciones
+  en producción, secretos/credenciales, cambios a CI o a la protección de
+  `main`, cambios de contrato (DTOs, rutas). Docs, tests y refactors internos
+  con checks verdes no son sensibles.
 - Auth remoto con `GITHUB_TOKEN` del entorno; **cada shell es un proceso fresco**:
   re-exportarlo en cada comando.
