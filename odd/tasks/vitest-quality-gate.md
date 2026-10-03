@@ -105,9 +105,9 @@ All commands observed by the orchestrator, not merely reported by the writer.
 
 ## Follow-ups (deliberately NOT done in this feature)
 1. **`tsc` emits compiled test files into `dist/`.** `build:types` produces 18 `__tests__/*.test.{js,d.ts,d.ts.map}` files under `packages/core/dist/`. Benign (gitignored, and `exports` exposes only `.` and `./authentication`). Excluding `__tests__` would also stop typechecking the tests, so the clean fix is a separate `tsconfig.build.json`.
-2. **`AGENTS.md` must be corrected** to document `apps/web` and remove the "do not assume a Next.js app exists" misdirection.
-3. **Two TypeScript majors in one monorepo.** `apps/web` pins `typescript: ~6.0.2`; root and all library packages use `7.0.2`. Pre-existing, not introduced here.
-4. **Frontend tests are unwritten.** `apps/web` runs with `--passWithNoTests`, so the web project reports green with zero coverage until the first real test exists. Strict TDD applies to that first test.
+2. **`AGENTS.md` must be corrected** to document `apps/web` and remove the "do not assume a Next.js app exists" misdirection. **DONE** — see `odd/tasks/docs-agents-layout-refresh.md` (commit `d8efbd1`).
+3. **Two TypeScript majors in one monorepo.** **DONE** — `apps/web` was on `~6.0.2`; unified to `7.0.2` in commit `183348f`. Measured before touching it: tsc 7.0.2 typechecks both web tsconfigs with zero diagnostics, so it was a stale pin, not a migration.
+4. **Frontend tests are unwritten.** ~~Still open~~ — **DONE**: `apps/web` runs plain `vitest run` (no `--passWithNoTests`) and now has **133 passing tests** across 14 files.
 5. **`IS_REACT_ACT_ENVIRONMENT` setup file omitted** for `apps/web`. It is needed before the first React test can avoid act() warnings; adding it with zero tests would be speculative config.
 
 ## Operational gotcha: pnpm 12 pacquet bug

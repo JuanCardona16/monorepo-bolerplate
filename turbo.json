@@ -5,7 +5,12 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"]
+      // `dist/**` covers every workspace package that emits files: the three
+      // libraries (tsup) and apps/web (Vite). apps/api-gateway emits nothing.
+      // `.next/**` was a Turborepo starter leftover: there is no Next.js app in
+      // this repo (apps/web is Vite), so it widened every cache key with globs
+      // that match nothing.
+      "outputs": ["dist/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
