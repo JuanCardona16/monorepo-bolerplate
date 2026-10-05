@@ -1,4 +1,7 @@
-import { Schema, model, models, type Model } from "mongoose";
+import mongoose from "mongoose";
+import type { Model } from "mongoose";
+
+const { Schema, model } = mongoose;
 
 const authUserSchema = new Schema(
   {
@@ -17,5 +20,5 @@ export interface AuthUserDoc {
   roles: string[];
 }
 
-export const AuthUserModel = (models["AuthUser"] ??
+export const AuthUserModel = (mongoose.models["AuthUser"] ??
   model<AuthUserDoc>("AuthUser", authUserSchema)) as Model<AuthUserDoc>;
