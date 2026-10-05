@@ -150,7 +150,7 @@ Librerías (`core`, `security`, `infrastructure`):
   `@repo/security`, `@repo/infrastructure`, `api-gateway`, `web`) vía
   `test.projects` en el `vitest.config.ts` raíz. **`vitest.workspace.ts` es un
   archivo muerto** — ese concepto se eliminó en Vitest 3+.
-- **588 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 170, `web` 134,
+- **593 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 175, `web` 134,
   `@repo/security` 39, `@repo/infrastructure` 29 + 5 de integración con **skip**.
   Correr el gate **dos veces**: sin `MONGODB_URI` y con él. Los 5 tests de
   integración de `infrastructure` están gated: hacen **skip** sin la variable y

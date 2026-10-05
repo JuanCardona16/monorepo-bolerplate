@@ -225,7 +225,7 @@ Por paquete (preferido para trabajo enfocado):
 - **Vitest 4.1.10**, un proyecto por paquete testeable (5: `@repo/core`,
   `@repo/security`, `@repo/infrastructure`, `api-gateway`, `web`) vía
   `test.projects` en el `vitest.config.ts` raíz.
-- **588 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 170,
+- **593 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 175,
   `web` 134, `@repo/security` 39, `@repo/infrastructure` 29 + 5 de integración
   con **skip**. Correr el gate **dos veces**: sin `MONGODB_URI` y con él. Los 5
   tests de integración de `infrastructure` están gated: hacen **skip** sin la
