@@ -150,18 +150,18 @@ Librerías (`core`, `security`, `infrastructure`):
   `@repo/security`, `@repo/infrastructure`, `api-gateway`, `web`) vía
   `test.projects` en el `vitest.config.ts` raíz. **`vitest.workspace.ts` es un
   archivo muerto** — ese concepto se eliminó en Vitest 3+.
-- **646 tests**: `@repo/core` 210, `api-gateway` 166, `web` 133,
-  `@repo/security` 39, `@repo/infrastructure` 98. Correr el gate **dos veces**:
-  sin `DATABASE_URL` y con él. Los 35 tests de integración de `infrastructure`
-  están gated: hacen **skip** sin la variable y hacen **throw** con `CI=true` sin
-  ella (en CI significa que el service container o el env wiring se rompió).
+- **588 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 170, `web` 134,
+  `@repo/security` 39, `@repo/infrastructure` 29 + 5 de integración con **skip**.
+  Correr el gate **dos veces**: sin `MONGODB_URI` y con él. Los 5 tests de
+  integración de `infrastructure` están gated: hacen **skip** sin la variable y
+  hacen **throw** con `CI=true` sin ella (en CI significa que el service
+  container o el env wiring se rompió).
 - **`.github/workflows/ci.yml`**: tres jobs paralelos (`build`, `check-types`,
   `test`), sin `needs`, `concurrency` cancela runs superados. Los tres son
   **required status checks en `main`**. El job `test` levanta un service
-  container **`postgres:17-alpine`** (pineado, no `latest`) y aplica migraciones
-  con `pnpm --filter @repo/infrastructure prisma:migrate:deploy` *antes* de
-  `pnpm test` — sin schema cada query falla con `P2021`, que se lee como repo
-  roto en vez de migración faltante.
+  container **`mongo:8.0`** (pineado, no `latest`) y expone
+  `MONGODB_URI=mongodb://localhost:27017/ci_auth` — sin DB los repos de mongo
+  no tienen contra qué probarse y el gate lo grita en vez de skipear.
 - `main` está protegida: checks requeridos, `strict: true`, `enforce_admins: true`,
   **0 aprobaciones** (solo developer), force-push y borrado bloqueados. Push
   directo a `main` rechazado — todo por PR.
@@ -172,8 +172,8 @@ Librerías (`core`, `security`, `infrastructure`):
   tests, porque `tsconfig.json` excluye `__tests__` del emit.
 - `turbo.json`: `check-types` dependsOn `^build` (el `check-types` de un paquete
   necesita los `dist/*.d.ts` de sus dependencias). `build.outputs` incluye
-  `dist/**`. El task `test` declara `env: ["DATABASE_URL"]` e
-  `inputs: [".env*"]` (sin declarar, Turbo filtraba la variable y los 35 tests de
+  `dist/**`. El task `test` declara `env: ["MONGODB_URI"]` e
+  `inputs: [".env*"]` (sin declarar, Turbo filtraba la variable y los tests de
   integración se skipeaban en *cada* run) y tiene **`cache: false`** (depende de
   una DB viva cuyo contenido ninguna cache key puede ver).
 - **Ningún paquete usa `--passWithNoTests`.** Una suite vacía es failure de CI, no
@@ -200,8 +200,8 @@ que falla en un runner limpio. Para ejercitar build scripts de verdad: `pnpm reb
 
 - `strictDepBuilds` default `true`: un postinstall no aprobado aborta con
   `ERR_PNPM_IGNORED_BUILDS`.
-- Aprobados en **`pnpm-workspace.yaml`** bajo `allowBuilds`: `@prisma/engines`,
-  `bcrypt`, `esbuild`, `prisma`.
+- Aprobados en **`pnpm-workspace.yaml`** bajo `allowBuilds`: `bcrypt`,
+  `esbuild`.
 - `onlyBuiltDependencies` se **eliminó** en pnpm v11 y el campo `pnpm` en
   `package.json` ya no se lee. Ambos son callejones sin salida; settings de
   pnpm 12 viven en `pnpm-workspace.yaml`.
@@ -216,14 +216,14 @@ que falla en un runner limpio. Para ejercitar build scripts de verdad: `pnpm reb
 | `apps/web` | Cliente React 19 + Vite 8 + Tailwind 4 (`web`, no `@repo/web`) | `core` solo como devDep solo-tipos |
 | `packages/core` | Dominio de auth, sin deps runtime | ninguna |
 | `packages/security` | Implementa ports de core (bcrypt, JWT, sha256, ids) | `core` |
-| `packages/infrastructure` | Adaptadores Prisma Postgres + email | `core` |
+| `packages/infrastructure` | Adaptadores Mongoose MongoDB + email | `core` |
 | `packages/typescript-config` | Solo `base.json` activo; resto sin uso | — |
 | `packages/eslint-config` | Consumir vía `./base` | — |
 
 - Dirección de dependencias por estructura, no por tooling: `core` no tiene runtime
   deps, `security`/`infrastructure` dependen de `core`, solo `api-gateway` compone.
   Importar siempre por exports (`@repo/core/authentication`,
-  `@repo/infrastructure/persistence/postgresSql`); un deep import
+  `@repo/infrastructure/persistence/mongo`); un deep import
   `../../packages/*/src/...` rompe el boundary y tsc igual lo acepta.
   `turbo boundaries` **no** configurado — evaluado y descartado a propósito (cero
   deep imports hoy; ver D-029).
@@ -255,10 +255,10 @@ para saber qué sección abrir antes de tocar lo suyo.
 
 | Voy a tocar | Leer primero |
 |---|---|
-| Tests, Vitest, mocks, Prisma en tests | `traps.md` — Tests / Vitest |
+| Tests, Vitest, mocks, Mongo en tests | `traps.md` — Tests / Vitest |
 | Middleware, logger, docs, Swagger, gateway | `traps.md` — Express / gateway |
 | Login, reset, roles, cookies, cliente auth | `traps.md` — Auth / dominio |
-| `.env.local`, migraciones, Neon vs local | `traps.md` — Prisma / env |
+| `.env.local`, Atlas vs local | `traps.md` — Mongo / env |
 | pnpm, Turbo, imports, rutas | `traps.md` — Tooling / repo |
 
 

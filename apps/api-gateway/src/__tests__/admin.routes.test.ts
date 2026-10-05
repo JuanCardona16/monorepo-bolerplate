@@ -19,7 +19,7 @@ const hoisted = vi.hoisted(() => {
   process.env.NODE_ENV = "test";
   process.env.TOKEN_SECRET_KEY = "test-only-token-secret";
   process.env.REFRESH_TOKEN_SECRET_KEY = "test-only-refresh-secret";
-  process.env.DATABASE_URL = "postgresql://unused:unused@127.0.0.1:5432/unused";
+  process.env.MONGODB_URI = "mongodb://unused:unused@127.0.0.1:27017/unused";
 
   return {
     changeUserRolesUseCase: {

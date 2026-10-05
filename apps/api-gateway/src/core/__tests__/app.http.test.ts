@@ -12,13 +12,13 @@ import { startServer, type RunningServer } from "../../__tests__/helpers/startSe
  * statement at the top of a test file runs *after* the imports.
  *
  * Because the container factory is replaced, `@repo/infrastructure` never
- * loads: no PrismaClient is constructed and no connection is opened.
+ * loads: no mongoose connection is opened and no model is touched.
  */
 const hoisted = vi.hoisted(() => {
   process.env.NODE_ENV = "test";
   process.env.TOKEN_SECRET_KEY = "test-only-token-secret";
   process.env.REFRESH_TOKEN_SECRET_KEY = "test-only-refresh-secret";
-  process.env.DATABASE_URL = "postgresql://unused:unused@127.0.0.1:5432/unused";
+  process.env.MONGODB_URI = "mongodb://unused:unused@127.0.0.1:27017/unused";
 
   const tokenProvider = {
     generate: vi.fn(() => Promise.resolve("signed-access-token")),
@@ -26,7 +26,6 @@ const hoisted = vi.hoisted(() => {
   };
 
   const container = {
-    prisma: { $disconnect: vi.fn(() => Promise.resolve()) },
     tokenProvider,
     loginUseCase: { execute: vi.fn() },
     registerUseCase: { execute: vi.fn() },

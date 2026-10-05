@@ -32,8 +32,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # No explicit `prisma generate` step: @repo/infrastructure has a
-      # postinstall hook that generates the client, so `pnpm install` covers it.
       - run: pnpm build
 
   check-types:
@@ -64,30 +62,25 @@ jobs:
     # no longer exists — the same class of false green as skipping them, just
     # harder to notice. GitHub runners are ephemeral so there is nothing to reuse
     # anyway; this only costs a few seconds and removes a whole failure mode.
-    # A real database, so the 35 integration tests in @repo/infrastructure
-    # actually execute. They were gated on DATABASE_URL and silently reported as
-    # skipped, which meant a broken repository could reach main with CI green:
-    # the tests that would have caught it never ran. The suites now throw instead
-    # of skipping when CI=true and DATABASE_URL is missing, so this container is
-    # load-bearing — removing it fails the build loudly rather than quietly
-    # halving the coverage again.
+    # A real database, so the MongoDB integration tests in
+    # @repo/infrastructure actually execute. They are gated on MONGODB_URI and
+    # silently report as skipped without it, which meant a broken repository
+    # could reach main with CI green: the tests that would have caught it never
+    # ran. The suites now throw instead of skipping when CI=true and
+    # MONGODB_URI is missing, so this container is load-bearing — removing it
+    # fails the build loudly rather than quietly halving the coverage again.
     #
     # The `test` task also has `cache: false` in turbo.json, so a replayed result
     # can never stand in for a run that touched the database.
     services:
-      postgres:
-        # Pinned, not `latest`. A major version bump can change collation or
-        # strictness and turn a green build red for reasons unrelated to the
-        # code. The local development database is Postgres 17.
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: ci_auth
+      mongo:
+        # Pinned, not `latest`. A major version bump can change strictness and
+        # turn a green build red for reasons unrelated to the code.
+        image: mongo:8.0
         ports:
-          - 5432:5432
+          - 27017:27017
         options: >-
-          --health-cmd "pg_isready -U ci -d ci_auth"
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -96,7 +89,7 @@ jobs:
       # not enough: Turbo filters undeclared variables out of the task, and that
       # is exactly how these tests became invisible — they skipped on every run,
       # not only in CI. Both must be present for the variable to reach Vitest.
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_auth?schema=public
+      MONGODB_URI: mongodb://localhost:27017/ci_auth
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -107,10 +100,5 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Schema first. Without this the suites run and every query fails with
-      # P2021 "table does not exist" — which looks like a broken repository
-      # rather than a missing migration.
-      - name: Apply migrations
-        run: pnpm --filter @repo/infrastructure prisma:migrate:deploy
       # `test` dependsOn `^build`, so this job also builds infrastructure.
       - run: pnpm test

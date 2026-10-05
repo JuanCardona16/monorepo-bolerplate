@@ -38,10 +38,6 @@ Reglas:
 - [ ] **TK-08 — Lint cubre 1 de 5 paquetes.** Solo `apps/web` define el script; el resto
   lo saltea Turbo en silencio. Agregarlo tal cual sería un verde que miente.
   Verificar: `pnpm lint` corre `eslint .` en los 5 paquetes de código.
-- [ ] **TK-09 — `prisma.config.ts` latente (clase D-021)**: corre `dotenv.config()` al
-  importarse y pasa `DATABASE_URL` sin validar. Hoy ningún test lo importa.
-  Verificar: test que lo importa en entorno sin `.env.local` y falla ruidoso o
-  pasa limpio.
 
 ## 🔵 Futuras — diferidas por el usuario
 
@@ -60,11 +56,3 @@ No están en el camino actual; cuando se activen vuelven a su sección por estad
   Estado: cableado listo en rama `feature/TK-04-turbo-remote-ci` (PR #33 cerrado sin
   mergear, reabrible). Falta token Vercel con escritura en Remote Cache Artifact.
   Verificar: `turbo build` reporta hits remotos en CI.
-- [ ] **TK-12 — Migrar persistencia Postgres/Prisma → MongoDB Atlas.** Decisión del usuario
-  2026-10-03 (proveedor: Atlas). Alcance: reescribir `packages/infrastructure`
-  (`persistence/postgresSql/` → `persistence/mongo/`), repos, mappers, `schema.prisma`
-  y 4 migraciones fuera, CI sin `postgres:17-alpine` ni `DATABASE_URL`, más diseño del
-  ODM (Mongoose vs driver) y modelado (ObjectId vs uuid, índice único `lower(email)`,
-  rotación con detección de replay). `core` no se toca (ports intactos).
-  Verificar: `pnpm build`, `pnpm check-types` y `pnpm test` en verde en ambas rondas,
-  sin `DATABASE_URL` y con `MONGODB_URI` de Atlas.
