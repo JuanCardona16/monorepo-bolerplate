@@ -32,6 +32,8 @@ const hoisted = vi.hoisted(() => {
     refreshUseCase: { execute: vi.fn() },
     logoutUseCase: { execute: vi.fn() },
     getProfileUseCase: { execute: vi.fn() },
+    requestPasswordResetUseCase: { execute: vi.fn() },
+    confirmPasswordResetUseCase: { execute: vi.fn() },
     authController: {} as never,
     close: vi.fn(() => Promise.resolve()),
   };
@@ -55,6 +57,9 @@ vi.mock("../../core/di/container.js", async () => {
     hoisted.container.refreshUseCase as never,
     hoisted.container.logoutUseCase as never,
     hoisted.container.getProfileUseCase as never,
+    { execute: vi.fn() } as never,
+    hoisted.container.requestPasswordResetUseCase as never,
+    hoisted.container.confirmPasswordResetUseCase as never,
   );
 
   return {

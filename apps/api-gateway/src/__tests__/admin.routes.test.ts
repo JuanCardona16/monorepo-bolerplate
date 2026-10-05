@@ -70,6 +70,8 @@ const authController = new AuthController(
   notFound as never,
   notFound as never,
   hoisted.changeUserRolesUseCase as never,
+  notFound as never,
+  notFound as never,
 );
 const deps = { changeUserRolesUseCase: hoisted.changeUserRolesUseCase };
 

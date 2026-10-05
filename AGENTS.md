@@ -166,10 +166,11 @@ Librerías (`core`, `security`, `infrastructure`):
   **0 aprobaciones** (solo developer), force-push y borrado bloqueados. Push
   directo a `main` rechazado — todo por PR.
 - Lo más cercano a un typecheck standalone: `pnpm --filter <pkg> build:types`
-  (`tsc` con `declaration: true`). El `check-types` raíz corre **7 tasks**
-  (4 typechecks + 3 builds de dependencias): cada librería tiene un
-  `tsconfig.test.json` con `noEmit: true` que type-checkea `src/**/*` incluyendo
-  tests, porque `tsconfig.json` excluye `__tests__` del emit.
+  (`tsc` con `declaration: true`). El `check-types` raíz corre **8 tasks**
+  (5 typechecks + 3 builds de dependencias): `core`, `security`,
+  `infrastructure`, `api-gateway` y `web`, cada uno con `tsconfig.test.json`
+  con `noEmit: true` que type-checkea `src/**/*` incluyendo tests, porque
+  `tsconfig.json` excluye `__tests__` del emit.
 - `turbo.json`: `check-types` dependsOn `^build` (el `check-types` de un paquete
   necesita los `dist/*.d.ts` de sus dependencias). `build.outputs` incluye
   `dist/**`. El task `test` declara `env: ["MONGODB_URI"]` e
