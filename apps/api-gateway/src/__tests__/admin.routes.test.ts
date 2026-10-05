@@ -39,7 +39,19 @@ vi.mock("../core/di/container.js", async () => {
     await vi.importActual<typeof import("../core/di/container.js")>(
       "../core/di/container.js"
     );
-  return { ...actual, getContainer: () => ({ authController, tokenProvider, ...deps }) };
+  const { createAuthorize } = await import(
+    "../core/middleware/auth/authorize.js"
+  );
+  return {
+    ...actual,
+    getContainer: () => ({
+      authentication: {
+        controller: authController,
+        authorize: createAuthorize(tokenProvider),
+      },
+      ...deps,
+    }),
+  };
 });
 
 import { AuthController } from "../features/authentication/controllers/auth.controller.js";
@@ -58,6 +70,8 @@ const authController = new AuthController(
   notFound as never,
   notFound as never,
   hoisted.changeUserRolesUseCase as never,
+  notFound as never,
+  notFound as never,
 );
 const deps = { changeUserRolesUseCase: hoisted.changeUserRolesUseCase };
 

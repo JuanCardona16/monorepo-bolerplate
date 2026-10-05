@@ -1,4 +1,7 @@
-import { Schema, model, models, type Model } from "mongoose";
+import mongoose from "mongoose";
+import type { Model } from "mongoose";
+
+const { Schema, model } = mongoose;
 
 const passwordResetTokenSchema = new Schema(
   {
@@ -19,5 +22,5 @@ export interface PasswordResetTokenDoc {
   usedAt: Date | null;
 }
 
-export const PasswordResetTokenModel = (models["PasswordResetToken"] ??
+export const PasswordResetTokenModel = (mongoose.models["PasswordResetToken"] ??
   model<PasswordResetTokenDoc>("PasswordResetToken", passwordResetTokenSchema)) as Model<PasswordResetTokenDoc>;

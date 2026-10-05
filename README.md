@@ -44,7 +44,7 @@ All root scripts run through Turbo:
 | `pnpm build` | `turbo run build` |
 | `pnpm dev` | `turbo run dev` |
 | `pnpm check-types` | `turbo run check-types` |
-| `pnpm test` | `turbo run test` (588 tests across 5 packages, +5 gated integration) |
+| `pnpm test` | `turbo run test` (593 tests across 5 packages, +5 gated integration) |
 | `pnpm lint` | `turbo run lint` — currently blocked, see below |
 
 ## Testing & CI

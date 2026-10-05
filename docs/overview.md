@@ -21,7 +21,7 @@ Swagger UI y MongoDB (Atlas para la app, `mongo:8.0` local/CI para tests).
 | API | Express 5, Zod, helmet, express-rate-limit, swagger-ui-express |
 | Cliente | React 19, Vite 8, Tailwind 4, TanStack Query 5, zustand 5, react-hook-form 7 |
 | Persistencia | Mongoose 8 + MongoDB 8 (`mongoose`) |
-| Tests | Vitest 4.1.10, 5 proyectos, 588 tests (+5 integración gated) |
+| Tests | Vitest 4.1.10, 5 proyectos, 593 tests (+5 integración gated) |
 | CI | GitHub Actions: `build`, `check-types`, `test` (+ Mongo service) |
 
 ## Dependencias por paquete

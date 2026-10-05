@@ -225,7 +225,7 @@ Por paquete (preferido para trabajo enfocado):
 - **Vitest 4.1.10**, un proyecto por paquete testeable (5: `@repo/core`,
   `@repo/security`, `@repo/infrastructure`, `api-gateway`, `web`) vía
   `test.projects` en el `vitest.config.ts` raíz.
-- **588 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 170,
+- **593 tests** (`pnpm test` sin DB): `@repo/core` 216, `api-gateway` 175,
   `web` 134, `@repo/security` 39, `@repo/infrastructure` 29 + 5 de integración
   con **skip**. Correr el gate **dos veces**: sin `MONGODB_URI` y con él. Los 5
   tests de integración de `infrastructure` están gated: hacen **skip** sin la
@@ -242,10 +242,12 @@ Por paquete (preferido para trabajo enfocado):
   directo a `main` rechazado — todo por PR.
 - Lo más cercano a un typecheck standalone:
   `pnpm --filter <pkg> build:types` (`tsc` con `declaration: true`). El
-  `check-types` raíz corre **7 tasks** (4 typechecks + 3 builds de
-  dependencias): cada librería tiene un `tsconfig.test.json` con `noEmit: true`
+  `check-types` raíz corre **8 tasks** (5 typechecks + 3 builds de
+  dependencias): cada paquete con `tsconfig.test.json` con `noEmit: true`
   que type-checkea `src/**/*` incluyendo tests, porque `tsconfig.json` excluye
-  `__tests__` del emit.
+  `__tests__` del emit. El gateway tiene `check-types` propio desde TK-14
+  (antes sus tests con args de menos al controller pasaban en verde sin que
+  tsc los viera).
 - El task `test` declara `env: ["MONGODB_URI"]` e `inputs: [".env*"]` (sin
   declarar, Turbo filtraba la variable y los tests de integración se
   skipeaban en *cada* run) y tiene **`cache: false`** (depende de una DB viva

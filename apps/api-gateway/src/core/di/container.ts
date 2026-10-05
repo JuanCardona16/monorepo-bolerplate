@@ -1,138 +1,40 @@
-import {
-  ChangeUserRolesUseCase,
-  ConfirmPasswordResetUseCase,
-  GetProfileUseCase,
-  LoginUseCase,
-  LogoutUseCase,
-  RefreshTokenUseCase,
-  RegisterUserUseCase,
-  RequestPasswordResetUseCase,
-  TokenProvider,
-} from "@repo/core/authentication";
-import {
-  AuthUserModel,
-  connectDatabase,
-  disconnectDatabase,
-  MongoAuthRepository,
-  MongoPasswordResetTokenRepository,
-  MongoRefreshTokenRepository,
-  PasswordResetTokenModel,
-  RefreshTokenModel,
-} from "@repo/infrastructure/persistence/mongo";
-import { ResendEmailSender } from "@repo/infrastructure/email";
-import {
-  BcryptPasswordHasher,
-  CryptoIdGenerator,
-  JwtTokenProvider,
-  Sha256RefreshTokenHasher,
-  TokenExpiry,
-} from "@repo/security";
-import { AuthController } from "../../features/authentication/controllers/auth.controller.js";
-import {
-  ACCESS_TOKEN_TTL,
-  BCRYPT_ROUNDS,
-  EMAIL_FROM,
-  PASSWORD_RESET_URL,
-  RESEND_API_KEY,
-  TOKEN_SECRET_KEY,
-} from "../../config/env/index.js";
+import { disconnectDatabase } from "@repo/infrastructure/persistence/mongo";
 
-export interface AuthContainer {
-  tokenProvider: TokenProvider;
-  loginUseCase: LoginUseCase;
-  registerUseCase: RegisterUserUseCase;
-  refreshUseCase: RefreshTokenUseCase;
-  logoutUseCase: LogoutUseCase;
-  getProfileUseCase: GetProfileUseCase;
-  changeUserRolesUseCase: ChangeUserRolesUseCase;
-  requestPasswordResetUseCase: RequestPasswordResetUseCase;
-  confirmPasswordResetUseCase: ConfirmPasswordResetUseCase;
-  authController: AuthController;
+import {
+  createAuthenticationContainer,
+  type AuthenticationContainer,
+} from "./authentication.js";
+import { createAuthInfrastructure } from "./infrastructure.js";
+
+/**
+ * App Composition Root (fino): ensambla infraestructura + módulos y owns el
+ * lifecycle de cierre. Hoy el único módulo es Authentication; cuando haya un
+ * segundo, se suma acá (`users: createUsersContainer(...)`) y el lifecycle de
+ * MongoDB sube al arranque de la aplicación (ver nota en `createContainer`).
+ *
+ * DI manual y explícita, sin frameworks. Sin Service Locator: dependencias por
+ * constructor, nunca `container.get("x")`.
+ */
+export interface AppContainer {
+  authentication: AuthenticationContainer;
   close: () => Promise<void>;
 }
 
-export function createContainer(): AuthContainer {
-  const authRepository = new MongoAuthRepository(AuthUserModel);
-  const refreshTokenRepository = new MongoRefreshTokenRepository(RefreshTokenModel);
-  const passwordHasher = new BcryptPasswordHasher(BCRYPT_ROUNDS);
-  const refreshTokenHasher = new Sha256RefreshTokenHasher();
-  const idGenerator = new CryptoIdGenerator();
-  const tokenProvider = new JwtTokenProvider(TOKEN_SECRET_KEY, ACCESS_TOKEN_TTL as TokenExpiry);
-  const passwordResetTokenRepository = new MongoPasswordResetTokenRepository(
-    PasswordResetTokenModel,
-  );
-  // The reset token is hashed with the very same sha256 hasher as the refresh
-  // token. Both are high-entropy random strings rather than user-chosen
-  // secrets, so a fast digest is the right tool: there is nothing to brute
-  // force, and bcrypt's slowness would only add latency to a request the user
-  // is waiting on.
-  const emailSender = new ResendEmailSender({ apiKey: RESEND_API_KEY, from: EMAIL_FROM });
-
-  const loginUseCase = new LoginUseCase(
-    authRepository,
-    passwordHasher,
-    tokenProvider,
-    refreshTokenRepository,
-    refreshTokenHasher,
-    idGenerator,
-  );
-  const registerUseCase = new RegisterUserUseCase(authRepository, passwordHasher, idGenerator);
-  const refreshUseCase = new RefreshTokenUseCase(
-    refreshTokenRepository,
-    refreshTokenHasher,
-    tokenProvider,
-    idGenerator,
-  );
-  const logoutUseCase = new LogoutUseCase(refreshTokenRepository);
-  const getProfileUseCase = new GetProfileUseCase(authRepository);
-  const changeUserRolesUseCase = new ChangeUserRolesUseCase(
-    authRepository,
-    refreshTokenRepository,
-  );
-  const requestPasswordResetUseCase = new RequestPasswordResetUseCase(
-    authRepository,
-    passwordResetTokenRepository,
-    refreshTokenHasher,
-    idGenerator,
-    emailSender,
-    PASSWORD_RESET_URL,
-  );
-  const confirmPasswordResetUseCase = new ConfirmPasswordResetUseCase(
-    authRepository,
-    refreshTokenRepository,
-    passwordResetTokenRepository,
-    passwordHasher,
-    refreshTokenHasher,
-  );
-  const authController = new AuthController(
-    loginUseCase,
-    registerUseCase,
-    refreshUseCase,
-    logoutUseCase,
-    getProfileUseCase,
-    changeUserRolesUseCase,
-    requestPasswordResetUseCase,
-    confirmPasswordResetUseCase,
-  );
+export function createContainer(): AppContainer {
+  const authentication = createAuthenticationContainer(createAuthInfrastructure());
 
   return {
-    tokenProvider,
-    loginUseCase,
-    registerUseCase,
-    refreshUseCase,
-    logoutUseCase,
-    getProfileUseCase,
-    changeUserRolesUseCase,
-    requestPasswordResetUseCase,
-    confirmPasswordResetUseCase,
-    authController,
+    authentication,
+    // MongoDB pertenece exclusivamente a auth hoy (único consumidor). Si un
+    // segundo módulo lo usa, este `close` deja de desconectar y el arranque
+    // (`core/index.ts`) pasa a ownear connect/disconnect.
     close: () => disconnectDatabase(),
   };
 }
 
-let cached: AuthContainer | null = null;
+let cached: AppContainer | null = null;
 
-export function getContainer(): AuthContainer {
+export function getContainer(): AppContainer {
   if (!cached) {
     cached = createContainer();
   }

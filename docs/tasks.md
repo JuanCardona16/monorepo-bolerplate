@@ -17,7 +17,7 @@ Reglas:
 - Lo completado históricamente vive en git (`docs/auth-tareas-pendientes.md`
   hasta `f1a864c`).
 
-> Última revisión 2026-10-03 contra el árbol vigente. La parte HTTP vive en
+> Última revisión 2026-10-05 contra el árbol vigente (mongo + composition root). La parte HTTP vive en
 > `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
 
 ## 🟢 Listo para hacer — aprobado y desbloqueado

@@ -31,13 +31,24 @@ vi.mock("../core/di/container.js", async () => {
     await vi.importActual<typeof import("../core/di/container.js")>(
       "../core/di/container.js"
     );
-  return { ...actual, getContainer: () => ({ authController, tokenProvider }) };
+  const { createAuthorize } = await import(
+    "../core/middleware/auth/authorize.js"
+  );
+  const tokenProvider = new JwtTokenProvider("test-only-secret-not-used-anywhere-else", "15m");
+  return {
+    ...actual,
+    getContainer: () => ({
+      authentication: {
+        controller: authController,
+        authorize: createAuthorize(tokenProvider),
+      },
+    }),
+  };
 });
 
 import { AuthController } from "../features/authentication/controllers/auth.controller.js";
 import { JwtTokenProvider } from "@repo/security";
 
-const tokenProvider = new JwtTokenProvider("test-only-secret-not-used-anywhere-else", "15m");
 const unused = vi.fn(async () => {
   throw Object.assign(new Error("not used in this suite"), { status: 404 });
 });

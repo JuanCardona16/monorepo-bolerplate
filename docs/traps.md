@@ -103,6 +103,10 @@ veces.
 
 - `pnpm install` en local no prueba nada sobre CI: con `node_modules` poblado,
   pnpm nunca re-evalúa postinstalls. Para ejercitar build scripts: `pnpm rebuild`.
+- Named imports desde CJS (`mongoose`) que vitest resuelve pero `tsx`/node-ESM
+  no: `models` fallaba con `does not provide an export named` solo en `dev`.
+  Importar el default y desestructurar (`const { Schema, model } = mongoose`;
+  `mongoose.models[...]`) funciona en todos los runtimes (TK-14 e2e).
 - `onlyBuiltDependencies` se eliminó en pnpm v11 y el campo `pnpm` en
   `package.json` ya no se lee. Settings de pnpm 12 viven en `pnpm-workspace.yaml`.
 - `turbo boundaries` evaluado y descartado: cero deep imports hoy; configurar

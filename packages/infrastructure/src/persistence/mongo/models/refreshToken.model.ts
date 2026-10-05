@@ -1,4 +1,7 @@
-import { Schema, model, models, type Model } from "mongoose";
+import mongoose from "mongoose";
+import type { Model } from "mongoose";
+
+const { Schema, model } = mongoose;
 
 const refreshTokenSchema = new Schema(
   {
@@ -23,5 +26,5 @@ export interface RefreshTokenDoc {
   rememberMe: boolean;
 }
 
-export const RefreshTokenModel = (models["RefreshToken"] ??
+export const RefreshTokenModel = (mongoose.models["RefreshToken"] ??
   model<RefreshTokenDoc>("RefreshToken", refreshTokenSchema)) as Model<RefreshTokenDoc>;

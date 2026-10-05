@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { AdminRoutes, PrivateRoutes, PublicRoutes } from "../../../constants/index.js";
 import { asyncHandler } from "../../../core/errors/index.js";
-import { createAuthorize } from "../../../core/middleware/auth/authorize.js";
 import { requireRole } from "../../../core/middleware/auth/requireRole.js";
 import {
   forgotPasswordLimiter,
@@ -19,8 +18,7 @@ import {
 } from "../schemas/auth.schemas.js";
 
 const authenticationPaths: Router = Router();
-const { authController, tokenProvider } = getContainer();
-const authorize = createAuthorize(tokenProvider);
+const { controller: authController, authorize } = getContainer().authentication;
 const ADMIN_ROLE = "admin";
 
 authenticationPaths.post(
