@@ -65,8 +65,10 @@ const authController = new AuthController(
   hoisted.container.changeUserRolesUseCase as never,
 );
 const tokenProvider = new JwtTokenProvider("test-only-token-secret", "15m");
-hoisted.container.authController = authController;
-hoisted.container.authorize = createAuthorize(tokenProvider);
+hoisted.container.authentication = {
+  controller: authController,
+  authorize: createAuthorize(tokenProvider),
+};
 
 /** Everything the log captured during one test. */
 let captured: string[] = [];

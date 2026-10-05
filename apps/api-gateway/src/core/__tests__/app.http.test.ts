@@ -60,8 +60,10 @@ vi.mock("../../core/di/container.js", async () => {
   return {
     getContainer: () => ({
       ...hoisted.container,
-      authController,
-      authorize: createAuthorize(hoisted.tokenProvider),
+      authentication: {
+        controller: authController,
+        authorize: createAuthorize(hoisted.tokenProvider),
+      },
     }),
     createContainer: vi.fn(),
     closeContainer: vi.fn(() => Promise.resolve()),
