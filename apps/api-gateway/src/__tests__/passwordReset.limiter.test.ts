@@ -38,8 +38,10 @@ vi.mock("../core/di/container.js", async () => {
   return {
     ...actual,
     getContainer: () => ({
-      authController,
-      authorize: createAuthorize(tokenProvider),
+      authentication: {
+        controller: authController,
+        authorize: createAuthorize(tokenProvider),
+      },
     }),
   };
 });

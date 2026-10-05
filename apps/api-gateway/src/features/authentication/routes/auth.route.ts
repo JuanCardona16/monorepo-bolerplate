@@ -18,7 +18,7 @@ import {
 } from "../schemas/auth.schemas.js";
 
 const authenticationPaths: Router = Router();
-const { authController, authorize } = getContainer();
+const { controller: authController, authorize } = getContainer().authentication;
 const ADMIN_ROLE = "admin";
 
 authenticationPaths.post(

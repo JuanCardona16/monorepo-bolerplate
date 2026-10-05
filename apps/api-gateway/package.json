@@ -8,6 +8,7 @@
     "build:js": "tsup",
     "build:types": "tsc",
     "build": "pnpm build:js && pnpm build:types",
+    "check-types": "tsc --noEmit -p tsconfig.test.json",
     "dev": "tsx watch src/core/index.ts",
     "test": "vitest run"
   },

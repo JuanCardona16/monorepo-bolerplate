@@ -242,10 +242,12 @@ Por paquete (preferido para trabajo enfocado):
   directo a `main` rechazado — todo por PR.
 - Lo más cercano a un typecheck standalone:
   `pnpm --filter <pkg> build:types` (`tsc` con `declaration: true`). El
-  `check-types` raíz corre **7 tasks** (4 typechecks + 3 builds de
-  dependencias): cada librería tiene un `tsconfig.test.json` con `noEmit: true`
+  `check-types` raíz corre **8 tasks** (5 typechecks + 3 builds de
+  dependencias): cada paquete con `tsconfig.test.json` con `noEmit: true`
   que type-checkea `src/**/*` incluyendo tests, porque `tsconfig.json` excluye
-  `__tests__` del emit.
+  `__tests__` del emit. El gateway tiene `check-types` propio desde TK-14
+  (antes sus tests con args de menos al controller pasaban en verde sin que
+  tsc los viera).
 - El task `test` declara `env: ["MONGODB_URI"]` e `inputs: [".env*"]` (sin
   declarar, Turbo filtraba la variable y los tests de integración se
   skipeaban en *cada* run) y tiene **`cache: false`** (depende de una DB viva
