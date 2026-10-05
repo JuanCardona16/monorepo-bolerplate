@@ -14,13 +14,14 @@ monorepo-bolerplate
 ├── packages/
 │   ├── core/                 Dominio auth puro · sin runtime deps · dueño del contrato
 │   ├── security/             Implementa ports de core (hash, JWT, ids)
-│   ├── infrastructure/       Adaptadores Prisma Postgres + email (Resend)
+│   ├── infrastructure/       Adaptadores Mongoose MongoDB + email (Resend)
 │   ├── typescript-config/    base.json activo (nextjs/react-library sin uso)
 │   └── eslint-config/        Consumir vía ./base
 ├── docs/                     overview · architecture · tasks · traps (+ pendientes históricos en git)
 ├── .opencode/agents/         implementer (writer acotado) · reviewer (verificador solo-lectura)
 ├── design-system/auth-app/   Diseño visual (FUERA del workspace: Turbo lo ignora)
-├── tools/                    Helper gh.ps1 (fuera del workspace)
+├── tools/                    Herramientas externas y scripts (fuera del workspace: Turbo lo ignora)
+├── devops/                   Objetivo — no existe aún: docker, kubernetes, terraform y demás
 └── odd/tasks/                Bitácoras de trabajo por feature
 ```
 
@@ -35,12 +36,39 @@ api-gateway (routes → validateWithZod → controller → use case de core)
   ▼                     ▼
 core (dominio)   security + infrastructure (implementan los ports)
   ▼
-Postgres (vía Prisma) · Email (vía Resend)
+MongoDB (vía Mongoose) · Email (vía Resend)
 ```
 
 Regla de dirección: `core` no conoce a nadie; `security` e `infrastructure`
 conocen a `core`; solo `api-gateway` conoce a los tres; `web` solo conoce los
 **tipos** de `core`. Nada en `packages/*` importa de `apps/*`, nunca.
+
+## Arquitectura objetivo
+
+Definición única hacia donde evoluciona el repo. Si algo de lo aquí escrito
+contradice a los manifests o a `src/`, mandan los manifests y `src/`.
+
+- **`packages/core` — lógica de negocio con DDD y Hexagonal.** Dominio puro:
+  entidades, value objects, errores tipados con `code` y casos de uso. Los
+  puertos (`application/ports/`, `domain/repositories/`) definen lo que el
+  negocio necesita; las implementaciones viven fuera. Sin dependencias runtime.
+- **`packages/infrastructure` — infraestructura del negocio.** Bases de datos y
+  sus implementaciones, caché, sistemas externos y adaptadores que implementan
+  los puertos de `core` (hoy: repositorios Mongoose MongoDB, mappers, `connection.ts`,
+  `ResendEmailSender`). `cache/`, `external/`, `shared/`, `config/`
+  son puntos de extensión para futuras bases, cachés o integraciones.
+- **`packages/security` — seguridad.** Toda la lógica e implementación de
+  seguridad requerida por los puertos de `core` (hoy: hash con bcrypt, JWT,
+  hash sha256 de refresh tokens, generación de ids). Conoce a `core`, nunca al
+  revés; el dominio no sabe cómo se hashea o firma algo.
+- **`tools/` — herramientas externas y scripts.** Helpers de desarrollo que no
+  se importan desde las aplicaciones ni se empaquetan (hoy: `gh.ps1`,
+  `with-github-token.ps1` + `README.md`). Fuera del workspace de pnpm y de los
+  globs de Turbo.
+- **`devops/` — objetivo, no existe aún.** Directorio previsto para docker,
+  kubernetes, terraform y demás automatización de despliegue e infraestructura.
+  No se crea por anticipado: cuando aparezca, vive acá y fuera de los globs de
+  Turbo, igual que `tools/`.
 
 ## Responsabilidades por carpeta
 
@@ -69,12 +97,11 @@ dominio no se entera.
 
 | Carpeta | Responsabilidad |
 |---|---|
-| `persistence/postgresSql/repositories/` | `PrismaAuthRepository`, `PrismaRefreshTokenRepository` |
-| `persistence/postgresSql/mappers/` | Prisma ↔ entidades (con las 2 pérdidas deliberadas documentadas) |
-| `persistence/postgresSql/prisma/` | `schema.prisma` + `migrations/` (`migration.sql` exacto) |
-| `persistence/postgresSql/config/` | `prisma.config.ts` (lee el `.env.local` **raíz**) |
-| `persistence/postgresSql/scripts/` | `promoteAdmin.ts` (primer admin) |
-| `persistence/postgresSql/client.ts` | Cliente Prisma |
+| `persistence/mongo/models/` | `AuthUserModel`, `RefreshTokenModel`, `PasswordResetTokenModel` (Mongoose; `uuid` clave de negocio, email unique normalizado) |
+| `persistence/mongo/mappers/` | Mongo ↔ entidades (con las 2 pérdidas deliberadas documentadas) |
+| `persistence/mongo/repositories/` | `MongoAuthRepository`, `MongoRefreshTokenRepository`, `MongoPasswordResetTokenRepository` |
+| `persistence/mongo/connection.ts` | `resolveMongoUri`, `connectDatabase`, `disconnectDatabase` (mongoose vive solo acá) |
+| `persistence/mongo/scripts/` | `promoteAdmin.ts` (primer admin; `mongo:promote-admin`) |
 | `email/` | `ResendEmailSender` (implementa el port `EmailSender`) |
 
 `cache/`, `external/`, `shared/`, `config/` son extension points vacíos.
@@ -105,6 +132,19 @@ de dominio portada acá.
 | `core/composition/` | `Bootstrap.tsx` (instala el accessor vía `configureApi`), `router.tsx` |
 | `constants/routes.ts` | Paths espejados del gateway (único contrato manual restante) |
 | `shared/components/`, `config/`, `test/` | UI compartida, `env.ts`, setup RTL |
+
+### `tools/` — herramientas externas y scripts
+
+Helpers de desarrollo (`gh.ps1`, `with-github-token.ps1`, `README.md`). Nada de
+acá se importa desde `apps/*` o `packages/*`, nada se empaqueta, Turbo lo
+ignora (fuera de los globs del workspace `apps/*`, `packages/*`).
+
+### `devops/` — objetivo, no existe aún
+
+Directorio previsto para docker, kubernetes, terraform y demás. No existe en el
+repo hoy (verificado); no se crea vacío por anticipado. Cuando aparezca, sigue
+las mismas reglas que `tools/`: fuera del workspace y fuera de los globs de
+Turbo.
 
 ## Cómo navegar
 

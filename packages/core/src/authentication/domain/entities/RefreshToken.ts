@@ -7,6 +7,12 @@ export interface RefreshTokenProps {
   roles: string[];
   expiresAt: Date;
   revokedAt: Date | null;
+  /**
+   * Whether this session was explicitly opted into 30 days. Persisted (not
+   * derived from expiry) so rotation can never silently upgrade a short
+   * session: the flag travels with the token across rotations.
+   */
+  rememberMe: boolean;
 }
 
 export class RefreshToken {
@@ -16,6 +22,7 @@ export class RefreshToken {
   private _roles: Set<string>;
   readonly _expiresAt: Date;
   private _revokedAt: Date | null;
+  readonly _rememberMe: boolean;
 
   constructor(props: RefreshTokenProps) {
     if (!props.id) {
@@ -30,12 +37,16 @@ export class RefreshToken {
     if (!(props.expiresAt instanceof Date) || Number.isNaN(props.expiresAt.getTime())) {
       throw new InvalidRefreshTokenError("Refresh token expiry must be a valid date.");
     }
+    if (typeof props.rememberMe !== "boolean") {
+      throw new InvalidRefreshTokenError("Refresh token session choice must be a boolean.");
+    }
     this._id = props.id;
     this._userUuid = props.userUuid;
     this._tokenHash = props.tokenHash;
     this._roles = new Set(props.roles);
     this._expiresAt = new Date(props.expiresAt);
     this._revokedAt = props.revokedAt ? new Date(props.revokedAt) : null;
+    this._rememberMe = props.rememberMe;
   }
 
   get id(): string {
@@ -60,6 +71,10 @@ export class RefreshToken {
 
   get revokedAt(): Date | null {
     return this._revokedAt ? new Date(this._revokedAt) : null;
+  }
+
+  get rememberMe(): boolean {
+    return this._rememberMe;
   }
 
   get isRevoked(): boolean {

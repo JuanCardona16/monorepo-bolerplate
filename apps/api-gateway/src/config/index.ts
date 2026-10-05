@@ -5,4 +5,4 @@ export { CorsConfig } from "./cors/index.js";
 // reads is a promise the codebase does not keep — a reader reasonably assumes
 // password reset and Google login are wired up. Re-add them when those features
 // land, together with the code that uses them.
-export { PORT, TOKEN_SECRET_KEY, REFRESH_TOKEN_SECRET_KEY, DATABASE_URL } from "./env/index.js";
+export { PORT, TOKEN_SECRET_KEY, REFRESH_TOKEN_SECRET_KEY, MONGODB_URI } from "./env/index.js";

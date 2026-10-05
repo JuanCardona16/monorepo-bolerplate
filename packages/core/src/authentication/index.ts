@@ -5,6 +5,7 @@ export * from './application/dtos/RefreshOutputDTO.js';
 export * from './application/dtos/RegisterInputDTO.js';
 export * from './application/dtos/RegisterOutputDTO.js';
 export * from './application/dtos/SessionDTO.js';
+export * from './application/sessionLifetimes.js';
 export * from './application/ports/EmailSender.js';
 export * from './application/ports/IdGenerator.js';
 export * from './application/ports/PasswordHasher.js';

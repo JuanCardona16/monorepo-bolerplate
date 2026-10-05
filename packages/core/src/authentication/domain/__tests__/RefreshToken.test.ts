@@ -13,6 +13,7 @@ function makeToken(overrides: Partial<ConstructorParameters<typeof RefreshToken>
     roles: ["user"],
     expiresAt: EXPIRY,
     revokedAt: null,
+    rememberMe: true,
     ...overrides,
   });
 }
@@ -29,6 +30,17 @@ describe("RefreshToken", () => {
       expect(token.expiresAt).toEqual(EXPIRY);
       expect(token.revokedAt).toBeNull();
       expect(token.isRevoked).toBe(false);
+      expect(token.rememberMe).toBe(true);
+    });
+
+    it("stores a short session choice when asked", () => {
+      expect(makeToken({ rememberMe: false }).rememberMe).toBe(false);
+    });
+
+    it("rejects a non-boolean session choice", () => {
+      expect(() => makeToken({ rememberMe: "yes" as unknown as boolean })).toThrow(
+        InvalidRefreshTokenError,
+      );
     });
 
     it("clones dates so the caller cannot mutate internal state", () => {

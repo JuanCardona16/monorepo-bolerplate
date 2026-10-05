@@ -10,7 +10,7 @@ cada trampa que costó tiempo está registrada en Engram (topics
 
 La autenticación opera completa: registro, login, refresh con rotación y
 revocación, logout, perfil, gestión de roles, reset de contraseña, spec OpenAPI con
-Swagger UI y las dos bases (Neon para la app, Postgres local para tests).
+Swagger UI y MongoDB (Atlas para la app, `mongo:8.0` local/CI para tests).
 
 ## Stack
 
@@ -20,9 +20,9 @@ Swagger UI y las dos bases (Neon para la app, Postgres local para tests).
 | Monorepo | pnpm@12.5.1 workspaces (`apps/*`, `packages/*`) + Turbo 2 |
 | API | Express 5, Zod, helmet, express-rate-limit, swagger-ui-express |
 | Cliente | React 19, Vite 8, Tailwind 4, TanStack Query 5, zustand 5, react-hook-form 7 |
-| Persistencia | Prisma 7.10 + Postgres 17 (`pg`, `@prisma/adapter-pg`) |
-| Tests | Vitest 4.1.10, 5 proyectos, 646 tests |
-| CI | GitHub Actions: `build`, `check-types`, `test` (+ Postgres service) |
+| Persistencia | Mongoose 8 + MongoDB 8 (`mongoose`) |
+| Tests | Vitest 4.1.10, 5 proyectos, 588 tests (+5 integración gated) |
+| CI | GitHub Actions: `build`, `check-types`, `test` (+ Mongo service) |
 
 ## Dependencias por paquete
 
@@ -30,7 +30,7 @@ Swagger UI y las dos bases (Neon para la app, Postgres local para tests).
 |---|---|---|
 | `@repo/core` | ninguna | vitest |
 | `@repo/security` | `@repo/core`, `bcrypt`, `jsonwebtoken` | `@types/*`, vitest |
-| `@repo/infrastructure` | `@repo/core`, `@prisma/client`, `@prisma/adapter-pg`, `pg`, `dotenv` | `prisma`, `tsx`, vitest |
+| `@repo/infrastructure` | `@repo/core`, `mongoose`, `dotenv` | `tsx`, vitest |
 | `api-gateway` | `core`, `infrastructure`, `security`, `express`, `zod`, `helmet`, `cors`, `cookie-parser`, `express-rate-limit`, `swagger-ui-express`, `dotenv` | `tsx`, `typescript ^7.0.2`, vitest |
 | `web` | `react`, `react-dom`, `react-router`, `@tanstack/react-query`, `zustand`, `react-hook-form` | `@repo/core` (devDep solo-tipos), `vite`, `tailwindcss`, `eslint`, `typescript-eslint`, testing-library, vitest |
 
@@ -47,10 +47,9 @@ pnpm test
 ```
 
 - Dev API: `pnpm --filter api-gateway dev` (requiere `apps/api-gateway/.env.local`
-  con `DATABASE_URL` y los 6 secretos de `src/config/env/`).
+  con `MONGODB_URI` y los 6 secretos de `src/config/env/`).
 - Dev web: `pnpm --filter web dev`.
-- Tests de integración: necesitan `DATABASE_URL` apuntando a un Postgres 17 con
-  migraciones aplicadas (`pnpm --filter @repo/infrastructure prisma:migrate:deploy`);
+- Tests de integración: necesitan `MONGODB_URI` apuntando a un MongoDB 8;
   sin la variable hacen skip en local y fallan en CI.
 
 ## Documentación

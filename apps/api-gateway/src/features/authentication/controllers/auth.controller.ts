@@ -13,6 +13,7 @@ import {
   REFRESH_COOKIE,
   REFRESH_COOKIE_MAX_AGE_MS,
   REFRESH_COOKIE_PATH,
+  REFRESH_COOKIE_SHORT_MAX_AGE_MS,
 } from "../../../constants/index.js";
 import { HttpError } from "../../../core/errors/HttpError.js";
 import {
@@ -21,16 +22,25 @@ import {
 } from "../../../config/env/index.js";
 import { AuthenticatedRequest } from "../../../core/middleware/auth/authorize.js";
 
-const refreshCookieOptions = {
+const refreshCookieBase = {
   httpOnly: true,
   // `SameSite=strict` never sends the cookie on a cross-site request, which
   // breaks the refresh flow as soon as the API is not same-site with the web
   // app. `lax` still blocks the cross-site POSTs CSRF depends on.
   secure: REFRESH_COOKIE_SECURE,
   sameSite: REFRESH_COOKIE_SAME_SITE,
-  maxAge: REFRESH_COOKIE_MAX_AGE_MS,
   path: REFRESH_COOKIE_PATH,
 };
+
+// The cookie lifetime follows the session choice the domain resolved, never
+// the raw request flag: the use case normalizes absent to false, and rotation
+// echoes the stored flag so a short session cannot self-upgrade to 30 days.
+function refreshCookieOptions(rememberMe: boolean) {
+  return {
+    ...refreshCookieBase,
+    maxAge: rememberMe ? REFRESH_COOKIE_MAX_AGE_MS : REFRESH_COOKIE_SHORT_MAX_AGE_MS,
+  };
+}
 
 export class AuthController {
   constructor(
@@ -65,9 +75,10 @@ export class AuthController {
     const result = await this.loginUseCase.execute({
       email: req.body.email,
       password: req.body.password,
+      rememberMe: req.body.rememberMe === true,
     });
     res
-      .cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions)
+      .cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(result.rememberMe))
       .status(200)
       .json({ success: true, data: { accessToken: result.accessToken } });
   }
@@ -80,7 +91,7 @@ export class AuthController {
     try {
       const result = await this.refreshUseCase.execute({ refreshToken: raw });
       res
-        .cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions)
+        .cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(result.rememberMe))
         .status(200)
         .json({ success: true, data: { accessToken: result.accessToken } });
     } catch (error) {

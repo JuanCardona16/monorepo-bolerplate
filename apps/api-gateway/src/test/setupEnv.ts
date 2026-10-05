@@ -15,14 +15,14 @@
  *
  * These are placeholders. Suites that need real behaviour pass their own
  * repository/client fakes, and the values here exist so that reading an env var
- * during import does not throw. `DATABASE_URL` points at a closed port on
+ * during import does not throw. `MONGODB_URI` points at a closed port on
  * purpose: if a suite ever actually tries to connect, it must fail loudly rather
  * than quietly reaching a database that happens to be running.
  */
 process.env.NODE_ENV = "test";
 process.env.TOKEN_SECRET_KEY = "test-only-token-secret";
 process.env.REFRESH_TOKEN_SECRET_KEY = "test-only-refresh-secret";
-process.env.DATABASE_URL = "postgresql://unused:unused@127.0.0.1:5432/unused";
+process.env.MONGODB_URI = "mongodb://unused:unused@127.0.0.1:27017/unused";
 
 /**
  * `DOCS_ENABLED` is deliberately left UNSET.

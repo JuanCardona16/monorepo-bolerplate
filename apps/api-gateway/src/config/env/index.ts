@@ -15,7 +15,7 @@ function required(name: string): string {
 export const PORT = process.env.PORT || 3000;
 export const TOKEN_SECRET_KEY = required("TOKEN_SECRET_KEY");
 export const REFRESH_TOKEN_SECRET_KEY = required("REFRESH_TOKEN_SECRET_KEY");
-export const DATABASE_URL = required("DATABASE_URL");
+export const MONGODB_URI = required("MONGODB_URI");
 export const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || "15m";
 export const BCRYPT_ROUNDS = parsePositiveInt("BCRYPT_ROUNDS", "10");
 

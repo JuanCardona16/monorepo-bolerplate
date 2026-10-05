@@ -33,13 +33,16 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginInput>();
+  } = useForm<LoginInput>({ defaultValues: { rememberMe: false } });
   const mutation = useLogin();
 
   const onSubmit = (data: LoginInput) => {
-    mutation.mutate(data, {
-      onSuccess: () => navigate(AppRoutes.HOME),
-    });
+    mutation.mutate(
+      { email: data.email, password: data.password, rememberMe: data.rememberMe === true },
+      {
+        onSuccess: () => navigate(AppRoutes.HOME),
+      },
+    );
   };
 
   return (
@@ -77,21 +80,24 @@ export function LoginPage() {
             register={register("password", { required: "Password is required." })}
             error={errors.password?.message}
           />
-          <div className="mb-6 flex items-center justify-between text-sm">
-            {/*
-              This used to be a checkbox. It had no `name`, no `onChange` and was
-              not registered with the form, so it submitted nothing: the refresh
-              cookie's lifetime is decided entirely by the server
-              (`REFRESH_COOKIE_MAX_AGE_MS`). Rendering a control that cannot be
-              changed is worse than not offering the choice at all — a user who
-              unticks it gets the same session and believes they chose something.
-
-              If a real "remember me" is wanted, it needs a server-side decision
-              first: the client would have to tell the API how long the refresh
-              cookie should live, which is a session-security posture and not a
-              UI detail.
-            */}
-            <p className="text-muted">You&rsquo;ll stay signed in for 30 days.</p>
+          <div className="mb-6 flex items-start justify-between gap-4 text-sm">
+            <div>
+              {/*
+                Real control now: the server accepts `rememberMe` and picks the
+                refresh-cookie lifetime from it (unchecked = 24h, checked =
+                30 days). Registered with the form, so it submits a boolean.
+              */}
+              <label htmlFor="login-remember" className="flex cursor-pointer items-center gap-2 text-ink">
+                <input
+                  id="login-remember"
+                  type="checkbox"
+                  {...register("rememberMe")}
+                  className="h-4 w-4 accent-current"
+                />
+                Remember me for 30 days
+              </label>
+              <p className="mt-1 text-muted">Otherwise your session lasts 24 hours.</p>
+            </div>
             <Link to={AppRoutes.FORGOT_PASSWORD} className="font-semibold text-ink">
               Forgot password?
             </Link>

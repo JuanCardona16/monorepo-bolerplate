@@ -46,7 +46,7 @@ const PROD_BASE = {
   NODE_ENV: "production",
   TOKEN_SECRET_KEY: "s",
   REFRESH_TOKEN_SECRET_KEY: "s",
-  DATABASE_URL: "postgresql://u:u@127.0.0.1:5432/u",
+  MONGODB_URI: "mongodb://u:u@127.0.0.1:27017/u",
   RESEND_API_KEY: undefined,
   PASSWORD_RESET_URL: undefined,
   EMAIL_FROM: undefined,

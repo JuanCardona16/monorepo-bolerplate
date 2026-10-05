@@ -52,14 +52,16 @@ describe("LoginPage rendering", () => {
     expect(google).toHaveAttribute("title", "Coming soon");
   });
 
-  // The session duration is decided by the server (`REFRESH_COOKIE_MAX_AGE_MS`).
-  // A checkbox for it could never have changed anything, so offering one told
-  // the user they had a choice they did not have. This asserts the absence on
-  // purpose: putting the checkbox back is a regression, not a feature.
-  it("offers no session-length control, because the client cannot change it", () => {
+  // TK-10: the server now accepts a real session-length choice, so the checkbox
+  // is back as an honest control: unchecked (default) means a 24h session,
+  // checked means 30 days. The old absence assertion was deliberately replaced,
+  // not deleted: the control exists again because the choice exists again.
+  it("offers a real remember-me checkbox, unchecked by default", () => {
     renderLogin();
 
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    const checkbox = screen.getByRole("checkbox", { name: /remember me/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).not.toBeChecked();
   });
 
   it("links to the password reset page instead of promising one later", () => {
@@ -82,10 +84,10 @@ describe("LoginPage rendering", () => {
     expect(link).not.toHaveAttribute("title", "Coming soon");
   });
 
-  it("states the session length instead of pretending it is optional", () => {
+  it("states the short default instead of promising 30 days to everyone", () => {
     renderLogin();
 
-    expect(screen.getByText(/stay signed in for 30 days/i)).toBeInTheDocument();
+    expect(screen.getByText(/24 hours/i)).toBeInTheDocument();
   });
 
   it("does not call the API before the form is submitted", () => {
@@ -132,7 +134,28 @@ describe("LoginPage submission", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain("/api/v1/auth/login");
     expect(init.method).toBe("POST");
-    expect(init.body).toBe(JSON.stringify({ email: "user@test.co", password: "Secret123" }));
+    expect(init.body).toBe(
+      JSON.stringify({ email: "user@test.co", password: "Secret123", rememberMe: false }),
+    );
+  });
+
+  it("sends rememberMe true when the checkbox is checked", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      stubResponse(200, { success: true, data: { accessToken: "token-1" } }),
+    );
+    renderLogin();
+
+    await user.type(screen.getByLabelText("Email"), "user@test.co");
+    await user.type(screen.getByLabelText("Password"), "Secret123");
+    await user.click(screen.getByRole("checkbox", { name: /remember me/i }));
+    await user.click(screen.getByRole("button", { name: "Log In" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBe(
+      JSON.stringify({ email: "user@test.co", password: "Secret123", rememberMe: true }),
+    );
   });
 
   it("disables the submit button and shows the pending label while in flight", async () => {

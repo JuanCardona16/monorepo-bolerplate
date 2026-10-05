@@ -10,11 +10,16 @@
  * without already being admin is a privilege escalation path, not a feature.
  *
  * Usage (from `packages/infrastructure`):
- *   pnpm prisma:promote-admin -- juan@gmail.com
- *   pnpm prisma:promote-admin -- juan@gmail.com --remove
+ *   pnpm mongo:promote-admin -- juan@gmail.com
+ *   pnpm mongo:promote-admin -- juan@gmail.com --remove
  */
+import mongoose from "mongoose";
+
 import { Email } from "@repo/core/authentication";
-import { createAuthPrismaClient } from "../client.js";
+
+import { resolveMongoUri } from "../connection.js";
+import { AuthUserModel } from "../models/authUser.model.js";
+import { RefreshTokenModel } from "../models/refreshToken.model.js";
 
 const ADMIN_ROLE = "admin";
 const BASE_ROLE = "user";
@@ -25,9 +30,7 @@ function parseArgs(argv: string[]): { email: string; remove: boolean } {
   const email = positional[0];
 
   if (!email) {
-    throw new Error(
-      "Usage: pnpm prisma:promote-admin -- <email> [--remove]",
-    );
+    throw new Error("Usage: pnpm mongo:promote-admin -- <email> [--remove]");
   }
   return { email, remove };
 }
@@ -42,25 +45,15 @@ export async function run(argv: string[]): Promise<void> {
   // `Email` normalizes, so the lookup uses the same spelling the app stores.
   const email = new Email(rawEmail).value;
 
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error(
-      "DATABASE_URL is not set. Export it, or run this through the package script that loads the env file.",
-    );
-  }
-
-  const prisma = createAuthPrismaClient(connectionString);
+  await mongoose.connect(resolveMongoUri());
   try {
-    const user = await prisma.authUserSchema.findUnique({ where: { email } });
+    const user = await AuthUserModel.findOne({ email }).lean().exec();
     if (!user) {
       throw new Error(
         `No user with email ${email}. Register the account through the API first.`,
       );
     }
 
-    // `roles` is a String[] column. Set semantics are not expressible in plain
-    // SQL here, so the read/modify/write is the honest option: re-running the
-    // script never duplicates the role.
     const current = new Set(user.roles);
     if (remove) {
       current.delete(ADMIN_ROLE);
@@ -71,25 +64,24 @@ export async function run(argv: string[]): Promise<void> {
       current.add(BASE_ROLE);
     }
 
-    const updated = await prisma.authUserSchema.update({
-      where: { uuid: user.uuid },
-      data: { roles: Array.from(current) },
-      select: { uuid: true, email: true, roles: true },
-    });
+    await AuthUserModel.updateOne(
+      { uuid: user.uuid },
+      { $set: { roles: Array.from(current) } },
+    ).exec();
 
-    // The user's refresh tokens carry a snapshot of the roles, so leaving them
-    // in place would leave them without admin until those tokens expire.
-    const { count } = await prisma.refreshTokenSchema.updateMany({
-      where: { userUuid: updated.uuid, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    // Refresh tokens carry a snapshot of the roles, so active sessions are
+    // revoked and the user signs in again with the new set.
+    const { modifiedCount } = await RefreshTokenModel.updateMany(
+      { userUuid: user.uuid, revokedAt: null },
+      { $set: { revokedAt: new Date() } },
+    ).exec();
 
     process.stdout.write(
-      `${remove ? "Demoted" : "Promoted"} ${updated.email} -> [${updated.roles.join(", ")}]\n` +
-        `Revoked ${count} active refresh token(s); the user has to sign in again.\n`,
+      `${remove ? "Demoted" : "Promoted"} ${email} -> [${Array.from(current).join(", ")}]\n` +
+        `Revoked ${modifiedCount} active refresh token(s); the user has to sign in again.\n`,
     );
   } finally {
-    await prisma.$disconnect();
+    await mongoose.disconnect();
   }
 }
 
@@ -102,9 +94,7 @@ function main(): Promise<void> {
 const invokedDirectly = process.argv[1]?.includes("promoteAdmin");
 if (invokedDirectly) {
   main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });
 }

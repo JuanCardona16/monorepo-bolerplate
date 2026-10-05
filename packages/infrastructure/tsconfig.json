@@ -4,7 +4,12 @@
   "compilerOptions": {
     // File Layout
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    // Explicit: `@types/node` is a declared devDependency, but automatic
+    // `@types` inclusion depends on hoisting layout, which pnpm is allowed
+    // to change on prune. Without this, `process`/`node:crypto` break the
+    // moment the hoisted copy moves (TK-12 hit exactly that).
+    "types": ["node"]
   },
   // There is no `include`, so tsc globs every .ts under the package. Without
   // the `__tests__` exclusion it emits compiled tests plus their .d.ts files

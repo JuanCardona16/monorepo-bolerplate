@@ -12,13 +12,13 @@ import { startServer, type RunningServer } from "../../__tests__/helpers/startSe
  * statement at the top of a test file runs *after* the imports.
  *
  * Because the container factory is replaced, `@repo/infrastructure` never
- * loads: no PrismaClient is constructed and no connection is opened.
+ * loads: no mongoose connection is opened and no model is touched.
  */
 const hoisted = vi.hoisted(() => {
   process.env.NODE_ENV = "test";
   process.env.TOKEN_SECRET_KEY = "test-only-token-secret";
   process.env.REFRESH_TOKEN_SECRET_KEY = "test-only-refresh-secret";
-  process.env.DATABASE_URL = "postgresql://unused:unused@127.0.0.1:5432/unused";
+  process.env.MONGODB_URI = "mongodb://unused:unused@127.0.0.1:27017/unused";
 
   const tokenProvider = {
     generate: vi.fn(() => Promise.resolve("signed-access-token")),
@@ -26,7 +26,6 @@ const hoisted = vi.hoisted(() => {
   };
 
   const container = {
-    prisma: { $disconnect: vi.fn(() => Promise.resolve()) },
     tokenProvider,
     loginUseCase: { execute: vi.fn() },
     registerUseCase: { execute: vi.fn() },
@@ -258,6 +257,50 @@ describe("POST /api/v1/auth/login", () => {
     expect(status).toBe(400);
     expect(body.error?.code).toBe("VALIDATION_ERROR");
   });
+
+  it("passes rememberMe through and sets the 30-day cookie when true", async () => {
+    container.loginUseCase.execute.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "raw-refresh-token",
+      rememberMe: true,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/login", {
+      email: "user@example.com",
+      password: "Password1",
+      rememberMe: true,
+    });
+
+    expect(status).toBe(200);
+    expect(container.loginUseCase.execute).toHaveBeenCalledWith({
+      email: "user@example.com",
+      password: "Password1",
+      rememberMe: true,
+    });
+    expect(setCookie).toContain("Max-Age=2592000");
+  });
+
+  it("defaults to the 24-hour cookie when rememberMe is absent", async () => {
+    container.loginUseCase.execute.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "raw-refresh-token",
+      rememberMe: false,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/login", {
+      email: "user@example.com",
+      password: "Password1",
+    });
+
+    expect(status).toBe(200);
+    expect(container.loginUseCase.execute).toHaveBeenCalledWith({
+      email: "user@example.com",
+      password: "Password1",
+      rememberMe: false,
+    });
+    expect(setCookie).toContain("Max-Age=86400");
+    expect(setCookie).not.toContain("Max-Age=2592000");
+  });
 });
 
 describe("POST /api/v1/auth/refresh", () => {
@@ -296,6 +339,37 @@ describe("POST /api/v1/auth/refresh", () => {
 
     expect(status).toBe(401);
     expect(body.error?.code).toBe("INVALID_REFRESH_TOKEN");
+  });
+
+  it("keeps a short session short across rotation", async () => {
+    container.refreshUseCase.execute.mockResolvedValue({
+      accessToken: "new-access-token",
+      refreshToken: "new-raw-refresh-token",
+      rememberMe: false,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/refresh", undefined, {
+      Cookie: `${REFRESH_COOKIE}=existing-refresh-token`,
+    });
+
+    expect(status).toBe(200);
+    expect(setCookie).toContain("Max-Age=86400");
+    expect(setCookie).not.toContain("Max-Age=2592000");
+  });
+
+  it("keeps a long session long across rotation", async () => {
+    container.refreshUseCase.execute.mockResolvedValue({
+      accessToken: "new-access-token",
+      refreshToken: "new-raw-refresh-token",
+      rememberMe: true,
+    });
+
+    const { status, setCookie } = await post("/api/v1/auth/refresh", undefined, {
+      Cookie: `${REFRESH_COOKIE}=existing-refresh-token`,
+    });
+
+    expect(status).toBe(200);
+    expect(setCookie).toContain("Max-Age=2592000");
   });
 
   it("clears the refresh cookie when the refresh is rejected", async () => {

@@ -9,8 +9,7 @@ import { InvalidCredentialsError } from "../../domain/errors/InvalidCredentialsE
 import { IdGenerator } from "../ports/IdGenerator.js";
 import { RefreshTokenHasher } from "../ports/RefreshTokenHasher.js";
 import { TokenProvider } from "../ports/TokenProvider.js";
-
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+import { sessionTtlMs } from "../sessionLifetimes.js";
 
 export class LoginUseCase {
   constructor(
@@ -47,16 +46,18 @@ export class LoginUseCase {
     });
 
     const rawRefreshToken = this.idGenerator.generate();
+    const rememberMe = loginDTO.rememberMe === true;
     const refreshToken = new RefreshToken({
       id: this.idGenerator.generate(),
       userUuid: user.uuid,
       tokenHash: await this.refreshTokenHasher.hash(rawRefreshToken),
       roles: Array.from(user.roles),
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      expiresAt: new Date(Date.now() + sessionTtlMs(rememberMe)),
       revokedAt: null,
+      rememberMe,
     });
     await this.refreshTokenRepository.save(refreshToken);
 
-    return { accessToken: token, refreshToken: rawRefreshToken };
+    return { accessToken: token, refreshToken: rawRefreshToken, rememberMe };
   }
 }

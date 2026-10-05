@@ -24,12 +24,13 @@ veces.
 - `vi.mock` resuelve desde el módulo bajo test, no desde el test (D-013). Un
   especificador distinto hace que el mock no aplique en silencio y la suite toque
   una DB real.
-- Prisma `update`/`updateMany` toman **UN** objeto (`{ where, data, select }`), no
-  `(where, data)` (D-014). Suites multi-caso necesitan `vi.clearAllMocks()` en
-  `beforeEach`.
-- Dos pérdidas de datos deliberadas en los mappers, pineadas por tests:
-  `createdAt`/`updatedAt` se dropean (las entidades no tienen dónde guardarlas,
-  Prisma las rellena al escribir) y roles duplicados colapsan (`Set<string>` vs
+- Mongoose `updateOne`/`updateMany` toman `(filtro, update, opts)`: el upsert de
+  la rotación va en `opts` (`{ upsert: true }`), no dentro de `$set` (D-014 era
+  la versión Prisma de esta trampa). Suites multi-caso necesitan
+  `vi.clearAllMocks()` en `beforeEach`.
+- Dos pérdidas de datos deliberadas en los mappers, pineadas por tests: las
+  entidades no guardan timestamps (los documentos mongo se crean con
+  `timestamps: false`) y roles duplicados colapsan (`Set<string>` vs
   `String[]`).
 
 ## Express / gateway
@@ -73,24 +74,30 @@ veces.
 - Cambiar roles es reemplazo total + revoca sesiones, `requireRole("admin")`
   **después** de `createAuthorize`; el anónimo recibe 401, nunca 403 (D-005, D-006).
 - Primer admin por script, no por ruta:
-  `pnpm --filter @repo/infrastructure prisma:promote-admin -- <email>` (D-012).
+  `pnpm --filter @repo/infrastructure mongo:promote-admin -- <email>` (D-012).
 - El "Remember for 30 days" del login es **texto estático, no checkbox**: la vida
   de la cookie la manda el servidor. Un test aserta su *ausencia* (D-018).
 
-## Prisma / env
+## Mongo / env
 
 - Dos `.env.local`, y la app usa el del paquete: `apps/api-gateway/.env.local`
-  (Neon) es la app; el raíz (Postgres local) es para los integration tests.
-  Editar el raíz no cambia dónde guarda la app (D-009).
-- Migraciones en `packages/infrastructure/src/persistence/postgresSql/prisma/migrations/`.
-  El archivo debe llamarse exactamente `migration.sql` (si no, `P3015`). Los
-  scripts `prisma:migrate:*` pasan `--config` solos (D-008, D-027). Para migrar
-  Neon, exportar el `DATABASE_URL` del gateway.
-- Aislamiento de tests por clave única (`randomUUID`), nunca `TRUNCATE`/`deleteMany`
-  global (D-009).
-- `@repo/infrastructure` genera el Prisma client en `postinstall` (solo en
-  `install`, no en `build`): tras borrar `generated/`, un `pnpm install` común NO
-  lo trae de vuelta — usar `pnpm install --force`.
+  (Atlas) es la app; el raíz es para los integration tests. Editar el raíz no
+  cambia dónde guarda la app (D-009).
+- Sin migraciones: el schema lo definen los modelos Mongoose (`persistence/mongo/models/`,
+  `timestamps: false`, `uuid` como clave de negocio, email unique normalizado).
+  No hay `prisma:migrate:*` ni `P3015`/`P2021` — si una query falla es el repo,
+  no una migración faltante.
+- Aislamiento de tests por clave única (`randomUUID`), nunca `deleteMany`
+  global (D-009). Limpieza por test con `deleteMany({ uuid: { $in: [...] } })`.
+- `@repo/infrastructure` ya no genera nada en `postinstall`: no hay `generated/`
+  que reponer. Si un modelo no aparece, es el `models["X"] ?? model(...)` o el
+  export de `persistence/mongo/index.ts`, no un artefacto faltante.
+- El gateway **no importa `mongoose` directo** (pnpm strict lo rechaza):
+  `connectDatabase`/`disconnectDatabase` viven en infrastructure y el container
+  los re-exporta (TK-12).
+- `types: ["node"]` explícito en el `tsconfig.json` de infrastructure: el
+  `@types/node` hoisteado se mueve con cada prune de pnpm y `process` dejaba
+  de resolver (TK-12).
 
 ## Tooling / repo
 

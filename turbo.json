@@ -37,10 +37,10 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       // Declared so Turbo both hashes it into the cache key and passes it
       // through to the task. Undeclared, `turbo run test` filtered it out and
-      // the 35 integration tests that need a real database skipped themselves
-      // with `describe.skipIf(!process.env.DATABASE_URL)` — on every run, not
-      // only in CI. They were unreachable through the normal command.
-      "env": ["DATABASE_URL"],
+      // the integration tests that need a real database skipped themselves
+      // with `describe.skip` — on every run, not only in CI. They were
+      // unreachable through the normal command.
+      "env": ["MONGODB_URI"],
       "outputs": ["coverage/**"]
     },
     "dev": {
