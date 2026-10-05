@@ -39,7 +39,17 @@ vi.mock("../core/di/container.js", async () => {
     await vi.importActual<typeof import("../core/di/container.js")>(
       "../core/di/container.js"
     );
-  return { ...actual, getContainer: () => ({ authController, tokenProvider, ...deps }) };
+  const { createAuthorize } = await import(
+    "../core/middleware/auth/authorize.js"
+  );
+  return {
+    ...actual,
+    getContainer: () => ({
+      authController,
+      authorize: createAuthorize(tokenProvider),
+      ...deps,
+    }),
+  };
 });
 
 import { AuthController } from "../features/authentication/controllers/auth.controller.js";

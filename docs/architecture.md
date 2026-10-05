@@ -111,6 +111,22 @@ dominio no se entera.
 | Carpeta | Responsabilidad |
 |---|---|
 | `core/di/` | Composition root (`container.ts`): acá se hace `new` de todo |
+
+Composition root de auth (TK-13, DI manual sin frameworks):
+
+- `createContainer()` ensambla repos Mongoose + seguridad + casos de uso +
+  controller + middleware `authorize` ya construido. Las rutas no componen:
+  reciben piezas listas.
+- Lo que expone es API mínima (`authorize`, `authController`, casos de uso);
+  los adapters concretos no salen del root.
+- Lifecycle: `core/index.ts` conecta (`connectDatabase`), SIGTERM/SIGINT
+  cierran (`closeContainer`, idempotente). MongoDB pertenece a auth —único
+  consumidor—; si aparece un segundo módulo, el lifecycle sube al arranque.
+- Config centralizada en `config/env/` (fail-fast); el container no lee
+  `process.env`. Singleton lazy síncrono (construir no hace I/O, sin races).
+- Para un módulo nuevo: mismo patrón (ports en core, adapters en
+  infrastructure/security, `createXContainer()` propio). Sin app container
+  hasta que haya ≥2 módulos.
 | `core/routes/`, `core/middleware/`, `core/errors/` | `app.ts`, `requestLogger` (primero), `GlobalHandleError` (mapa code→status) |
 | `core/docs/` | OpenAPI + Swagger UI (`/api/docs`) |
 | `config/env/` | 6 secretos `required()` fail-fast + knobs opcionales documentados |
