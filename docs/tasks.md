@@ -17,17 +17,13 @@ Reglas:
 - Lo completado históricamente vive en git (`docs/auth-tareas-pendientes.md`
   hasta `f1a864c`).
 
-> Última revisión 2026-10-05 contra el árbol vigente (mongo + composition root). La parte HTTP vive en
-> `apps/api-gateway`; los paquetes solo contienen lógica de negocio.
+> Última revisión 2026-10-05 contra el árbol vigente (mongo + composition root,
+> sesión verificada e2e). La parte HTTP vive en `apps/api-gateway`; los paquetes
+> solo contienen lógica de negocio.
 
 ## 🟢 Listo para hacer — aprobado y desbloqueado
 
-- [ ] **TK-10 — "Recordarme" real (diseño aprobado TK-06).** Login acepta `rememberMe?: boolean`
-  (default `false` = default seguro). Servidor: dos vidas de cookie refresh — corta
-  (sesión/24h, constante a definir) vs larga de 30d (`REFRESH_COOKIE_MAX_AGE_MS` actual).
-  Cookie sigue HttpOnly; rotación y revocación intactas. Frontend: vuelve el checkbox
-  real (el test que aserta su ausencia se actualiza a propósito) + tests de ambas vidas.
-  Verificar: desmarcado = sesión corta, marcado = 30d, por defecto corta.
+_(vacío — TK-10 verificado y cerrado abajo)_
 
 ## 🟠 Deuda técnica
 
@@ -56,3 +52,10 @@ No están en el camino actual; cuando se activen vuelven a su sección por estad
   Estado: cableado listo en rama `feature/TK-04-turbo-remote-ci` (PR #33 cerrado sin
   mergear, reabrible). Falta token Vercel con escritura en Remote Cache Artifact.
   Verificar: `turbo build` reporta hits remotos en CI.
+- [ ] **TK-15 — Sacar `getContainer()` del import-time (P3, con trigger).** Diferido:
+  activar SOLO si el arranque duele, aparece un import circular o el costo de
+  construir el grafo a import-time se vuelve medible. Hoy el boot construye una
+  vez, rápido y sin I/O. Alcance cuando se active: lookup por request + `getContainer()`
+  eager en `boot()` (fail-fast), mismo seam de mocks.
+  Verificar: `pnpm build`, `check-types` y `test` en verde + `setupEnv.ts` intacto
+  (D-021 vive en `config/env`, no lo mata este cambio).
