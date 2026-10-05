@@ -69,8 +69,6 @@ export interface AuthContainer {
   close: () => Promise<void>;
 }
 
-export { connectDatabase } from "@repo/infrastructure/persistence/mongo";
-
 export function createContainer(overrides: ContainerOverrides = {}): AuthContainer {
   const authRepository = overrides.authRepository ?? new MongoAuthRepository(AuthUserModel);
   const refreshTokenRepository =

@@ -1,5 +1,6 @@
 import { PORT } from "../config/index.js";
-import { closeContainer, connectDatabase } from "./di/container.js";
+import { closeContainer } from "./di/container.js";
+import { connectDatabase } from "@repo/infrastructure/persistence/mongo";
 import app from "./app.js";
 
 const shutdown = async () => {
