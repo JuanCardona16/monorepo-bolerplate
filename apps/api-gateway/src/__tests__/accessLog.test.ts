@@ -38,15 +38,19 @@ vi.mock("../core/di/container.js", async () => {
     await vi.importActual<typeof import("../core/di/container.js")>(
       "../core/di/container.js",
     );
+  const { createAuthorize } = await import(
+    "../core/middleware/auth/authorize.js"
+  );
   return { ...actual, getContainer: () => hoisted.container };
 });
 
-// `auth.route.ts` destructures `authController` and `tokenProvider` from the
+// `auth.route.ts` destructures `authController` and `authorize` from the
 // container at import time, and the routes are mounted while `app.ts` is being
 // imported. Returning a container without them fails the import with
 // "Cannot read properties of undefined (reading 'register')" — which points at
 // the route file and has nothing to do with the access log.
 import { AuthController } from "../features/authentication/controllers/auth.controller.js";
+import { createAuthorize } from "../core/middleware/auth/authorize.js";
 import { JwtTokenProvider } from "@repo/security";
 
 // The controller has to be built on the SAME use case objects the tests assert
@@ -62,7 +66,7 @@ const authController = new AuthController(
 );
 const tokenProvider = new JwtTokenProvider("test-only-token-secret", "15m");
 hoisted.container.authController = authController;
-hoisted.container.tokenProvider = tokenProvider;
+hoisted.container.authorize = createAuthorize(tokenProvider);
 
 /** Everything the log captured during one test. */
 let captured: string[] = [];

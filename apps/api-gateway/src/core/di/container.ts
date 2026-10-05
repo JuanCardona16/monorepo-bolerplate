@@ -7,11 +7,9 @@ import {
   RefreshTokenUseCase,
   RegisterUserUseCase,
   RequestPasswordResetUseCase,
-  TokenProvider,
 } from "@repo/core/authentication";
 import {
   AuthUserModel,
-  connectDatabase,
   disconnectDatabase,
   MongoAuthRepository,
   MongoPasswordResetTokenRepository,
@@ -28,6 +26,8 @@ import {
   TokenExpiry,
 } from "@repo/security";
 import { AuthController } from "../../features/authentication/controllers/auth.controller.js";
+import { createAuthorize } from "../middleware/auth/authorize.js";
+import type { RequestHandler } from "express";
 import {
   ACCESS_TOKEN_TTL,
   BCRYPT_ROUNDS,
@@ -38,7 +38,7 @@ import {
 } from "../../config/env/index.js";
 
 export interface AuthContainer {
-  tokenProvider: TokenProvider;
+  authorize: RequestHandler;
   loginUseCase: LoginUseCase;
   registerUseCase: RegisterUserUseCase;
   refreshUseCase: RefreshTokenUseCase;
@@ -51,6 +51,20 @@ export interface AuthContainer {
   close: () => Promise<void>;
 }
 
+/**
+ * Composition root del módulo Authentication: el único lugar donde se
+ * construye el grafo de dependencias de auth (repos + seguridad + casos de
+ * uso + controller + middleware `authorize`).
+ *
+ * Decisiones de lifecycle (TK-13):
+ * - MongoDB pertenece exclusivamente a auth hoy (único consumidor), por eso
+ *   `close()` desconecta. Si aparece un segundo módulo, el lifecycle sube al
+ *   arranque de la aplicación y `close()` deja de desconectar.
+ * - La configuración ya viene validada del módulo centralizado
+ *   `config/env/` (fail-fast a import-time); este archivo no lee `process.env`.
+ * - Singleton lazy síncrono: la construcción no hace I/O (mongoose conecta
+ *   aparte en `core/index.ts`), así que no hay race de doble inicialización.
+ */
 export function createContainer(): AuthContainer {
   const authRepository = new MongoAuthRepository(AuthUserModel);
   const refreshTokenRepository = new MongoRefreshTokenRepository(RefreshTokenModel);
@@ -58,6 +72,7 @@ export function createContainer(): AuthContainer {
   const refreshTokenHasher = new Sha256RefreshTokenHasher();
   const idGenerator = new CryptoIdGenerator();
   const tokenProvider = new JwtTokenProvider(TOKEN_SECRET_KEY, ACCESS_TOKEN_TTL as TokenExpiry);
+  const authorize = createAuthorize(tokenProvider);
   const passwordResetTokenRepository = new MongoPasswordResetTokenRepository(
     PasswordResetTokenModel,
   );
@@ -116,7 +131,7 @@ export function createContainer(): AuthContainer {
   );
 
   return {
-    tokenProvider,
+    authorize,
     loginUseCase,
     registerUseCase,
     refreshUseCase,

@@ -46,6 +46,9 @@ vi.mock("../../core/di/container.js", async () => {
   const { AuthController } = await import(
     "../../features/authentication/controllers/auth.controller.js"
   );
+  const { createAuthorize } = await import(
+    "../../core/middleware/auth/authorize.js"
+  );
   const authController = new AuthController(
     hoisted.container.loginUseCase as never,
     hoisted.container.registerUseCase as never,
@@ -55,7 +58,11 @@ vi.mock("../../core/di/container.js", async () => {
   );
 
   return {
-    getContainer: () => ({ ...hoisted.container, authController }),
+    getContainer: () => ({
+      ...hoisted.container,
+      authController,
+      authorize: createAuthorize(hoisted.tokenProvider),
+    }),
     createContainer: vi.fn(),
     closeContainer: vi.fn(() => Promise.resolve()),
   };
