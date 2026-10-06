@@ -89,13 +89,19 @@ describe("BcryptPasswordHasher", () => {
     await expect(hasher.compare("password", hash)).resolves.toBe(false);
   });
 
-  it("respects a higher explicit cost when provided", async () => {
-    const hasher = new BcryptPasswordHasher(12);
+  it(
+    "respects a higher explicit cost when provided",
+    // Cost 12 = 2^12 rounds de bcrypt, CPU-bound: bajo turbo en paralelo
+    // supera los 5s default de vitest (TK-17). Timeout por test, no global.
+    { timeout: 30_000 },
+    async () => {
+      const hasher = new BcryptPasswordHasher(12);
 
-    const hash = await hasher.hash(PASSWORD);
+      const hash = await hasher.hash(PASSWORD);
 
-    // Cost is encoded in the digest header, not supplied separately.
-    expect(hash).toMatch(/^\$2[aby]\$12\$/);
-    await expect(hasher.compare(PASSWORD, hash)).resolves.toBe(true);
-  });
+      // Cost is encoded in the digest header, not supplied separately.
+      expect(hash).toMatch(/^\$2[aby]\$12\$/);
+      await expect(hasher.compare(PASSWORD, hash)).resolves.toBe(true);
+    },
+  );
 });
