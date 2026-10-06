@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
 
 import { AuthUser, UserAlreadyExistsError } from "@repo/core/authentication";
@@ -41,8 +41,15 @@ function uniqueEmail(): string {
 }
 
 describeDb("MongoAuthRepository", () => {
-  it("saves and finds a user by email and uuid", async () => {
+  beforeAll(async () => {
     await mongoose.connect(process.env.MONGODB_URI as string);
+    // `unique: true` indexes build asynchronously on first use: without
+    // waiting, the duplicate-email test can win the race and resolve instead
+    // of rejecting (CI flake, TK-18).
+    await AuthUserModel.createIndexes();
+  });
+
+  it("saves and finds a user by email and uuid", async () => {
     const uuid = randomUUID();
     createdUuids.push(uuid);
     const user = new AuthUser({
