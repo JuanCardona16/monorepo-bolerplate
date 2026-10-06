@@ -13,7 +13,26 @@
       "outputs": ["dist/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      // Set completo que leen `apps/api-gateway` y los tests de
+      // `infrastructure`: sin declararlo, `turbo/no-undeclared-env-vars`
+      // warnnea y el cache ignora cambios en estas variables.
+      "env": [
+        "ACCESS_LOG_IPS",
+        "ACCESS_TOKEN_TTL",
+        "CI",
+        "DOCS_ENABLED",
+        "EMAIL_FROM",
+        "NODE_ENV",
+        "OPENAPI_SERVER_URL",
+        "PASSWORD_RESET_URL",
+        "PORT",
+        "REFRESH_COOKIE_SAME_SITE",
+        "REFRESH_COOKIE_SECURE",
+        "REFRESH_TOKEN_SECRET_KEY",
+        "RESEND_API_KEY",
+        "TOKEN_SECRET_KEY"
+      ]
     },
     "check-types": {
       "dependsOn": ["^build"]

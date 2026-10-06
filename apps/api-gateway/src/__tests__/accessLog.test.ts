@@ -44,9 +44,6 @@ vi.mock("../core/di/container.js", async () => {
     await vi.importActual<typeof import("../core/di/container.js")>(
       "../core/di/container.js",
     );
-  const { createAuthorize } = await import(
-    "../core/middleware/auth/authorize.js"
-  );
   return { ...actual, getContainer: () => hoisted.container };
 });
 
