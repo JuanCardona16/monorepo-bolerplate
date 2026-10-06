@@ -27,9 +27,10 @@ _(vacío — TK-10 verificado y cerrado abajo)_
 
 ## 🟠 Deuda técnica
 
-- [ ] **TK-08 — Lint cubre 1 de 5 paquetes.** Solo `apps/web` define el script; el resto
-  lo saltea Turbo en silencio. Agregarlo tal cual sería un verde que miente.
-  Verificar: `pnpm lint` corre `eslint .` en los 5 paquetes de código.
+- [ ] **TK-16 — Limpieza de warnings de lint (0 errores, N warnings).** El lint global
+  nuevo reporta warnings reales (`no-unused-vars` en `security`/gateway,
+  `turbo/no-undeclared-env-vars` en tests). Hoy `onlyWarn` los deja en verde.
+  Verificar: `pnpm lint` con cero warnings.
 
 ## 🔵 Futuras — diferidas por el usuario
 

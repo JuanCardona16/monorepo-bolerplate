@@ -10,6 +10,7 @@
     "build": "pnpm build:js && pnpm build:types",
     "check-types": "tsc --noEmit -p tsconfig.test.json",
     "dev": "tsx watch src/core/index.ts",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "keywords": [],
@@ -31,12 +32,14 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "@types/swagger-ui-express": "4.1.8",
+    "eslint": "^10.10.0",
     "tsx": "^4.23.13",
     "typescript": "6.0.3",
     "vitest": "4.1.10"

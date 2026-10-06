@@ -16,7 +16,7 @@ monorepo-bolerplate
 │   ├── security/             Implementa ports de core (hash, JWT, ids)
 │   ├── infrastructure/       Adaptadores Mongoose MongoDB + email (Resend)
 │   ├── typescript-config/    base.json activo (nextjs/react-library sin uso)
-│   └── eslint-config/        Consumir vía ./base
+│   └── eslint-config/        Consumir vía ./base (web) o ./node (backend)
 ├── docs/                     overview · architecture · tasks · traps (+ pendientes históricos en git)
 ├── .opencode/agents/         implementer (writer acotado) · reviewer (verificador solo-lectura)
 ├── design-system/auth-app/   Diseño visual (FUERA del workspace: Turbo lo ignora)
