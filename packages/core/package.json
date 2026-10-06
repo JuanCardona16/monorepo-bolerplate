@@ -21,6 +21,7 @@
     "build": "pnpm build:js && pnpm build:types",
     "check-types": "tsc --noEmit -p tsconfig.test.json",
     "dev": "tsup --watch --onSuccess \"pnpm run build:types\"",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "keywords": [],
@@ -28,8 +29,10 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
     "@types/node": "^26.5.1",
     "@repo/typescript-config": "workspace:*",
+    "eslint": "^10.10.0",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
   }
