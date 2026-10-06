@@ -27,10 +27,6 @@ _(vacío — TK-10 verificado y cerrado abajo)_
 
 ## 🟠 Deuda técnica
 
-- [ ] **TK-07 — `pnpm lint` roto: portón de versión del parser** (`typescript-eslint` no
-  soporta TS 7.0, tracking #10940). Detalle en Engram `decisions/D-030`. No es
-  gate de CI. Salidas: esperar >= 7.1 o parser contra API de TS 6 side-by-side.
-  Verificar: `pnpm lint` en verde en `apps/web`.
 - [ ] **TK-08 — Lint cubre 1 de 5 paquetes.** Solo `apps/web` define el script; el resto
   lo saltea Turbo en silencio. Agregarlo tal cual sería un verde que miente.
   Verificar: `pnpm lint` corre `eslint .` en los 5 paquetes de código.
