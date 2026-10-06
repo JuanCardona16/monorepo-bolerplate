@@ -18,7 +18,7 @@ export class JwtTokenProvider implements TokenProvider {
     try {
       const decoded = jwt.verify(token, this.secret) as TokenPayload;
       return decoded;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

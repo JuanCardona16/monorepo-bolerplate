@@ -25,6 +25,16 @@ export const config = [
     },
   },
   {
+    // Express exige aridad en la firma (`_next` en middlewares de error y
+    // handlers): el prefijo `_` es la convención para "requerido pero sin uso".
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  {
     ignores: ["dist/**", "coverage/**"],
   },
 ];

@@ -27,11 +27,6 @@ _(vacío — TK-10 verificado y cerrado abajo)_
 
 ## 🟠 Deuda técnica
 
-- [ ] **TK-16 — Limpieza de warnings de lint (0 errores, N warnings).** El lint global
-  nuevo reporta warnings reales (`no-unused-vars` en `security`/gateway,
-  `turbo/no-undeclared-env-vars` en tests). Hoy `onlyWarn` los deja en verde.
-  Verificar: `pnpm lint` con cero warnings.
-
 ## 🔵 Futuras — diferidas por el usuario
 
 No están en el camino actual; cuando se activen vuelven a su sección por estado
