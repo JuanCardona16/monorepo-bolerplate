@@ -125,7 +125,7 @@ Raíz (`package.json` — todo vía Turbo):
 ```sh
 pnpm build        # turbo run build
 pnpm dev          # turbo run dev (persistente, cache: false)
-pnpm lint         # turbo run lint — ROTO, ver Gates
+pnpm lint         # turbo run lint — verde 5/5, NO es gate de CI (ver Gates)
 pnpm check-types  # turbo run check-types
 pnpm format       # prettier --write "**/*.{ts,tsx,md}" (sin config — defaults)
 ```
@@ -179,18 +179,21 @@ Librerías (`core`, `security`, `infrastructure`):
   una DB viva cuyo contenido ninguna cache key puede ver).
 - **Ningún paquete usa `--passWithNoTests`.** Una suite vacía es failure de CI, no
   verde falso. No re-agregar el flag.
-- **`pnpm lint` está ROJO y NO es defecto de código — y cubre solo 1 de 5
-  paquetes.** Falla con `Error: typescript-eslint does not support TS 7.0`
-  (tracking typescript-eslint#10940, soporte para TS >= 7.1). **No se arregla
-  subiendo una versión**: esperar >= 7.1 o apuntar el parser a la API de TS 6
-  side-by-side.
-  - Solo `apps/web` define script `lint`; los cuatro paquetes de backend **no
-    definen ninguno**, así que Turbo los saltea en silencio. Un `pnpm lint` en
-    verde significaría 1 de 5, no el repo.
-  - **No CI gate en rojo**: `ci.yml` tiene exactamente tres jobs y `lint` no es
-    uno. `pnpm peers check` también sale 1 por lo mismo (el parser pide
-    `typescript: '>=4.8.4 <6.1.0'`).
-  - Los gates confiables hoy: `pnpm build`, `pnpm check-types`, `pnpm test`.
+- **`pnpm lint` VERDE en 5/5 — pero NO es gate de CI.** Cubre los cinco paquetes
+  testeables (`@repo/core`, `@repo/security`, `@repo/infrastructure`,
+  `api-gateway`, `web`), cada uno con `lint: eslint .` y **0 warnings** (TK-08,
+  TK-16). Un verde de `pnpm lint` significa 5 de 5, no 1 de 5.
+  - **El soporte de TypeScript es un rango cerrado por arriba, no "soportado"**:
+    `typescript-eslint` 8.70.1 declara el peer `typescript: ">=4.8.4 <6.1.0"` y
+    el repo pinea `"typescript": "6.0.3"` (TK-07). Funciona porque 6.0.3 cae
+    dentro del rango. **Subir typescript a 6.1.0 o más rompe `pnpm lint`** con
+    `Error: typescript-eslint does not support TS X` (tracking
+    typescript-eslint#10940). Eso NO es defecto de código: es el peer range, y no
+    se arregla subiendo typescript.
+  - **`ci.yml` tiene exactamente tres jobs** (`build`, `check-types`, `test`) y
+    `lint` no es ninguno. El lint se verifica local; CI no lo corre.
+  - Gates confiables hoy: `pnpm build`, `pnpm check-types`, `pnpm test`,
+    `pnpm lint`.
 - Gate local completo: `pnpm install --frozen-lockfile` → `pnpm build` → `pnpm test`.
 
 ### Gotcha de pnpm que va a hacer perder tiempo otra vez
