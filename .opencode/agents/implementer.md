@@ -34,7 +34,7 @@ Implement:
 ## How to work
 
 1. **Load skills first.** Read every file under the prompt's `## Skills to load` before task work.
-2. **Read before writing.** Read each file you will touch. If the prompt references `odd/tasks/<feature>.md`, read it before editing.
+2. **Locate via CodeGraph, then read what you will touch.** For structural location (find a symbol, trace a flow, assess impact) query the indexed graph first — `codegraph query/explore/callers/callees/impact`, or MCP `codegraph_explore` when available. Never query via `gentle-ai codegraph` (that wrapper is only for `init`). Treat returned verbatim source as already Read and obey staleness banners (re-Read only flagged files; run `sync` only when the watcher is disabled or staleness is reported). Then read each file you will touch before editing. If the prompt references `odd/tasks/<feature>.md`, read it before editing.
 3. **TDD when ordered.** Test first in the matching category, observe red, write the minimum code for green, then refactor. Never invent evidence.
 4. **Follow repo patterns.** Match existing mocking style, file layout, naming, and the api-gateway thin-controller rule (routes → `validateWithZod` → `asyncHandler` → controller → use case from `@repo/core`; wiring only in `container.ts`).
 5. **Save discoveries to Engram** (`mem_save`, project `monorepo-bolerplate`) when you find something non-obvious: gotchas, edge cases, broken assumptions.

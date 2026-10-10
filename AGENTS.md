@@ -104,7 +104,9 @@ Los agentes viven en tres capas: builtins (`explore`, `general`), globales
 
 Al delegar, el prompt lleva siempre: alcance exacto (archivos), skills
 resueltas (`## Skills to load`), `## Verification` con los comandos a correr,
-y `## Known environmental failures` si aplica. Los subagentes nacen sin memoria:
+y `## Known environmental failures` si aplica. El skill `codegraph` se inyecta
+siempre que la tarea implique buscar, ubicar o impactar código, aunque el pedido
+no lo nombre. Los subagentes nacen sin memoria:
 se pasan referencias (topic keys, rutas), nunca el contenido. Resultado con
 `status` distinto de éxito = no se avanza a la fase dependiente.
 
@@ -279,9 +281,10 @@ para saber qué sección abrir antes de tocar lo suyo.
 - Prettier sin config; `pnpm format` reescribe in place — correr solo sobre
   archivos tocados o esperar diff repo-wide.
 - Codegraph primero: el repo tiene índice `.codegraph/`. CLI (`status`, `query`,
-  `explore`, `callers`) antes de Read/Glob/Grep en preguntas estructurales;
-  `sync <root>` tras editar. Un banner de staleness significa índice atrasado —
-  verificar el archivo con Read.
+  `explore`, `callers`, `callees`, `impact`) o MCP `codegraph_explore` antes de
+  Read/Glob/Grep en preguntas estructurales; nunca `gentle-ai codegraph` salvo
+  `init`. `sync` solo cuando el watcher está apagado o hay banner de staleness
+  (`⚠️ Some files … edited since last sync`: re-leer solo los archivos listados).
 - `Email` normaliza (`trim().toLowerCase()`) antes de validar, whitespace
   aceptado y trimmeado, casing nunca llega a storage. Índice único funcional en
   `lower(email)`; ambas capas en sync.
